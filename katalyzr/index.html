@@ -73,6 +73,22 @@ textarea{min-height:70px;resize:vertical}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .seg button{background:none;border:0;padding:7px 12px;color:var(--ink)}
 .seg button.on{background:var(--accent);color:#fff}
+.calwrap{display:grid;grid-template-columns:320px 1fr;gap:24px;margin-top:8px}
+.cal{border:1px solid var(--line);border-radius:12px;padding:14px}
+.calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.caltitle{font-weight:600;margin:0}
+.navb{background:none;border:1px solid var(--line);border-radius:8px;width:32px;height:32px;color:var(--ink);font-size:18px}
+.calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.dow{font-size:11px;color:var(--muted);padding:4px 0}
+.day{aspect-ratio:1;border:0;border-radius:8px;background:none;color:var(--locked);font-size:14px}
+.day.avail{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.day.avail:hover{outline:2px solid var(--accent)}
+.day.sel{background:var(--accent);color:#fff}
+.day.today{box-shadow:inset 0 0 0 1px var(--muted)}
+.day:disabled{cursor:default}
+.legend{display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--accent-soft);border:1px solid var(--accent);vertical-align:-1px}
+.timepanel .slots{grid-template-columns:repeat(2,1fr);margin-top:0;align-content:start}
+.timepanel .slot{text-align:center}
 .slots{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
 .slot{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;text-align:left;color:var(--ink)}
 .slot.on{border-color:var(--accent);background:var(--accent-soft);font-weight:600}
@@ -120,14 +136,33 @@ const STOPS = [
   {key:"int1",    label:"Interview 1<br>Psychologist at CSG", mins:45},
   {key:"int2",    label:"Interview 2<br>Hiring manager",      mins:60},
 ];
-const SLOTS1 = ["Tue, Oct 27 · 10:00 AM","Wed, Oct 28 · 1:30 PM","Thu, Oct 29 · 4:00 PM"];
-const SLOTS2 = ["Mon, Nov 2 · 11:00 AM","Tue, Nov 3 · 2:00 PM","Thu, Nov 5 · 9:30 AM"];
+const DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTH_FULL=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const TODAY=new Date(2026,9,21);
+const key=d=>d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
+const fromKey=k=>{const [y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d);};
+const label=d=>DOW[d.getDay()]+", "+MON[d.getMonth()]+" "+d.getDate();
+// Open times for a given interview and date ([] = unavailable)
+function openTimes(n,d){
+  const wd=d.getDay(); if(wd===0||wd===6||d<=TODAY) return [];
+  if(n===1){
+    const start=new Date(2026,9,26), end=new Date(2026,10,13);
+    if(d<start||d>end||[30].includes(d.getDate())&&d.getMonth()===9||key(d)==="2026-11-11") return [];
+    const base=["9:30 AM","11:00 AM","1:30 PM","4:00 PM"]; base.splice(d.getDate()%4,1); return base;
+  } else {
+    const b=S.int[1].date?fromKey(S.int[1].date):new Date(2026,9,28);
+    const start=new Date(b.getFullYear(),b.getMonth(),b.getDate()+3), end=new Date(2026,10,25);
+    if(d<start||d>end||key(d)==="2026-11-11") return [];
+    const base=["10:00 AM","2:00 PM","3:30 PM"]; base.splice(d.getDate()%3,1); return base;
+  }
+}
 
 const S = {
   reached:0, viewing:0, finished:false, interviews:0,
   profile:{name:"Jordan Reyes", role:"Senior Product Designer", skills:"Service design, research synthesis, design systems", motivation:"Building products that make complicated systems feel human."},
   episodeStarted:false, mode:"highlight", pos:0, playing:false, timer:null,
-  int:{1:{slot:null,booked:false,open:false,inRoom:false,done:false},2:{slot:null,booked:false,open:false,inRoom:false,done:false}},
+  int:{1:{slot:null,date:null,time:null,month:null,booked:false,open:false,inRoom:false,done:false},2:{slot:null,date:null,time:null,month:null,booked:false,open:false,inRoom:false,done:false}},
   stream:null
 };
 
@@ -268,8 +303,32 @@ function togglePlay(dur,i,fromDone){
 }
 function stopAudio(){S.playing=false;clearInterval(S.timer);}
 
+function calendarHTML(n,st){
+  if(!st.month){ // open on the month of the first available date
+    const d=new Date(TODAY); for(let i=0;i<90;i++){d.setDate(d.getDate()+1); if(openTimes(n,d).length) break;}
+    st.month=[d.getFullYear(),d.getMonth()];
+  }
+  const [y,mo]=st.month, first=new Date(y,mo,1), days=new Date(y,mo+1,0).getDate();
+  let cells=DOW.map(d=>`<div class="dow">${d.slice(0,2)}</div>`).join("");
+  for(let i=0;i<first.getDay();i++) cells+=`<div></div>`;
+  for(let d=1;d<=days;d++){
+    const dt=new Date(y,mo,d), k=key(dt), ok=openTimes(n,dt).length>0;
+    cells+=`<button class="day ${ok?"avail":""} ${st.date===k?"sel":""} ${k===key(TODAY)?"today":""}" ${ok?`data-k="${k}"`:"disabled"} aria-label="${label(dt)}${ok?" (available)":" (unavailable)"}">${d}</button>`;
+  }
+  const times = st.date ? openTimes(n,fromKey(st.date)) : [];
+  const right = st.date
+    ? `<p class="caltitle" style="margin-top:6px">${label(fromKey(st.date))}</p><p class="muted" style="font-size:13px;margin-bottom:10px">Open times (Central Time)</p>
+       <div class="slots">${times.map(t=>`<button class="slot ${st.time===t?"on":""}" data-t="${t}">${t}</button>`).join("")}</div>`
+    : `<p class="muted" style="margin-top:40px">Pick a highlighted date to see open times.</p>`;
+  return `<h2>Pick a date and time</h2><div class="calwrap">
+    <div class="cal"><div class="calhead"><button class="navb" id="calPrev" aria-label="Previous month">‹</button><span class="caltitle">${MONTH_FULL[mo]} ${y}</span><button class="navb" id="calNext" aria-label="Next month">›</button></div>
+      <div class="calgrid">${cells}</div>
+      <p class="note" style="margin:10px 0 0"><span class="legend"></span> Available ${n===2?"(starting a few days after Interview 1)":""}</p></div>
+    <div class="timepanel">${right}</div></div>`;
+}
+
 function showInterview(n, h, isPast){
-  const st=S.int[n], m=$("main"), slots=n===1?SLOTS1:SLOTS2;
+  const st=S.int[n], m=$("main");
   const who = n===1
     ? {title:"Interview 1 of 2 · Psychologist at CSG", head:"A two-way check, not a test.", init:"PC", name:"Psychologist at CSG",
        body:"This is a relaxed 45-minute conversation. The psychologist helps you think through what you want from your next role and what Dana's team is really like, and she can share your strengths with Dana in your words. There's nothing to prepare and no right answers. You can also ask her anything."}
@@ -286,8 +345,8 @@ function showInterview(n, h, isPast){
   } else if(st.done){
     h+=`<div class="booked">✓ Completed · ${st.slot}</div>`;
   } else if(!st.booked){
-    h+=`<h2>Pick a time</h2><div class="slots">${slots.map((s,j)=>`<button class="slot ${st.slot===s?"on":""}" data-j="${j}">${s.replace(" · ","<br>")} CT</button>`).join("")}</div>
-      <div class="row"><button class="btn" id="book" ${st.slot?"":"disabled"}>Book this time</button></div>`;
+    h+=calendarHTML(n,st)+`<div class="row"><button class="btn" id="book" ${st.time?"":"disabled"}>${st.time?"Book "+label(fromKey(st.date))+" at "+st.time:"Book this time"}</button>
+      <span class="muted" style="font-size:13px">${n===1?"45":"60"} min · video call inside Katalyzr</span></div>`;
   } else {
     h+=`<div class="booked"><strong>Booked: ${st.slot} CT</strong><br>
       ${st.open?"Your room is open now.":"Your room opens at your booked time. We'll send a reminder."}</div>
@@ -298,8 +357,12 @@ function showInterview(n, h, isPast){
   h+=`</div>`;
   m.innerHTML=h;
 
-  m.querySelectorAll(".slot").forEach(b=>b.onclick=()=>{st.slot=slots[+b.dataset.j];showInterview(n,revisitNote(S.viewing),isPast);});
-  if($("book")) $("book").onclick=()=>{st.booked=true;toast("Interview booked: "+st.slot);showInterview(n,revisitNote(S.viewing),isPast);};
+  const re=()=>showInterview(n,revisitNote(S.viewing),isPast);
+  m.querySelectorAll(".day.avail").forEach(b=>b.onclick=()=>{st.date=b.dataset.k;st.time=null;re();});
+  m.querySelectorAll(".slot").forEach(b=>b.onclick=()=>{st.time=b.dataset.t;re();});
+  if($("calPrev")) $("calPrev").onclick=()=>{const [y,mo]=st.month;st.month=mo===0?[y-1,11]:[y,mo-1];re();};
+  if($("calNext")) $("calNext").onclick=()=>{const [y,mo]=st.month;st.month=mo===11?[y+1,0]:[y,mo+1];re();};
+  if($("book")) $("book").onclick=()=>{st.slot=label(fromKey(st.date))+" · "+st.time;st.booked=true;toast("Interview booked: "+st.slot);showInterview(n,revisitNote(S.viewing),isPast);};
   if($("skip")) $("skip").onclick=()=>{st.open=true;toast("It's "+st.slot.split(" · ")[1]+" on "+st.slot.split(" · ")[0]+". Your room is open.");showInterview(n,revisitNote(S.viewing),isPast);};
   if($("resched")) $("resched").onclick=()=>{st.booked=false;st.open=false;toast("Pick a new time.");showInterview(n,revisitNote(S.viewing),isPast);};
   if($("join")) $("join").onclick=()=>{
