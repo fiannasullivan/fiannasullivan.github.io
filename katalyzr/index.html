@@ -109,6 +109,14 @@ textarea{min-height:70px;resize:vertical}
 .recap li::before{content:"✓";color:var(--done);font-weight:700}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);opacity:0;background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:10px;font-size:14px;transition:.25s;pointer-events:none;z-index:10}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.act.show{pointer-events:auto}
+.tact{margin-left:14px;background:none;border:0;color:var(--accent-soft);font-weight:700;text-decoration:underline;text-underline-offset:3px;padding:0}
+.navrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.backb{background:none;border:1px solid var(--line);border-radius:8px;padding:6px 12px;color:var(--ink);font-size:13.5px}
+.backb:hover{border-color:var(--accent);color:var(--accent)}
+.navrow .revisit{margin:0;flex:1}
+.linkb{background:none;border:0;color:var(--accent);text-decoration:underline;text-underline-offset:3px;padding:0;font-size:13.5px}
+.leaveq{display:flex;justify-content:center;align-items:center;gap:10px;margin-top:12px;color:#fff;font-size:14px}
 .revisit{font-size:13px;background:var(--accent-soft);border-radius:8px;padding:8px 12px;margin-bottom:14px}
 </style>
 </head>
@@ -161,13 +169,21 @@ function openTimes(n,d){
 const S = {
   reached:0, viewing:0, finished:false, interviews:0,
   profile:{name:"Jordan Reyes", role:"Senior Product Designer", skills:"Service design, research synthesis, design systems", motivation:"Building products that make complicated systems feel human."},
+  profileAI:null,
   episodeStarted:false, mode:"highlight", pos:0, playing:false, timer:null,
   int:{1:{slot:null,date:null,time:null,month:null,booked:false,open:false,inRoom:false,done:false},2:{slot:null,date:null,time:null,month:null,booked:false,open:false,inRoom:false,done:false}},
   stream:null
 };
 
 const $ = id => document.getElementById(id);
-function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),2400);}
+// toast(message, [actionLabel, actionFn]) — an action (e.g. "Undo") keeps it up longer
+function toast(msg,action,fn){
+  const t=$("toast"); t.innerHTML=""; t.append(msg);
+  if(action){const b=document.createElement("button");b.className="tact";b.textContent=action;
+    b.onclick=()=>{t.classList.remove("show");fn();};t.append(b);}
+  t.classList.toggle("act",!!action); t.classList.add("show");
+  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("show"),action?6000:2400);
+}
 function esc(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 function fmt(sec){sec=Math.floor(sec);return Math.floor(sec/60)+":"+String(sec%60).padStart(2,"0");}
 
@@ -203,14 +219,21 @@ function advance(){
 
 function render(){renderStatus();renderRail();showStop(S.viewing,false);}
 
-function revisitNote(i){
-  return (i<S.reached && !S.finished) ? `<div class="revisit">You're revisiting a completed step. <button class="demo" onclick="S.viewing=S.reached;render()">Back to current step →</button></div>` : "";
+// Escape route shown above every step: Back to the previous stop, plus a way back to where you were
+function nav(i){
+  const back = i>0 ? `<button class="backb" onclick="goBack(${i})">← Back: ${STOPS[i-1].label.split("<br>")[0]}</button>` : "";
+  let note="";
+  if(S.finished) note=`<div class="revisit">Looking back at a completed step. <button class="demo" onclick="S.viewing=-1;showDone();renderRail()">Back to summary →</button></div>`;
+  else if(i<S.reached) note=`<div class="revisit">You're revisiting a completed step. Changes here are saved. <button class="demo" onclick="S.viewing=S.reached;render()">Back to current step →</button></div>`;
+  return (back||note) ? `<div class="navrow">${back}${note}</div>` : "";
 }
+function goBack(i){ stopAudio(); S.viewing=i-1; if(S.finished){renderRail();showStop(i-1,true);} else render(); window.scrollTo({top:0,behavior:"smooth"}); }
+const revisitNote = nav;
 
 function showStop(i,fromDone){
   const m=$("main"), k=STOPS[i].key;
   if(S.finished && !fromDone){ return showDone(); }
-  let h = fromDone ? `<div class="revisit">Looking back at a completed step. <button class="demo" onclick="S.viewing=-1;showDone();renderRail()">Back to summary →</button></div>` : revisitNote(i);
+  let h = nav(i);
   const isPast = i<S.reached || S.finished;
 
   if(k==="invite"){
@@ -224,14 +247,15 @@ function showStop(i,fromDone){
       <li>Nothing here is public. Only you and CSG can see your information, and you can decline at any time.</li>
     </ul></details>
     <div class="row">${isPast?`<span class="muted">✓ Invite accepted</span>`:`<button class="btn" id="accept">Accept invite</button><button class="btn ghost" onclick="toast('No problem. Your data will be deleted and you won\\'t hear from us again.')">Not for me</button>`}</div></div>`;
-    m.innerHTML=h; if($("accept")) $("accept").onclick=()=>{toast("Invite accepted. Welcome to Katalyzr.");advance();};
+    m.innerHTML=h; if($("accept")) $("accept").onclick=()=>{advance();toast("Invite accepted. Welcome to Katalyzr.","Undo",()=>{S.reached=0;S.viewing=0;render();toast("Invite not accepted yet. Take your time.");});};
   }
 
   if(k==="profile"){
     const p=S.profile;
     h+=`<div class="card"><p class="eyebrow">Step 2 of 6 · Your profile</p>
     <h1>Does this sound like you?</h1>
-    <p class="muted">We started this from your public LinkedIn. Change anything that's off. This is what the matching uses, along with what motivates you.</p>
+    <p class="muted">We filled this in from your public LinkedIn. Change anything that's off. This is what the matching uses, along with what motivates you.</p>
+    ${JSON.stringify(p)!==JSON.stringify(S.profileAI)?`<p style="font-size:13.5px">You've edited this profile. <button class="linkb" id="resetAI">Reset to what we filled in</button></p>`:""}
     <div class="grid2" style="margin-top:16px">
       <div><label for="f1">Name</label><input id="f1" value="${esc(p.name)}"></div>
       <div><label for="f2">Current role</label><input id="f2" value="${esc(p.role)}"></div>
@@ -241,9 +265,13 @@ function showStop(i,fromDone){
     <div class="row"><button class="btn" id="conf">${isPast?"Save changes":"Confirm profile"}</button><span class="muted" style="font-size:13px">🔒 Never shared outside Katalyzr</span></div></div>`;
     m.innerHTML=h;
     $("conf").onclick=()=>{
+      const prev={...S.profile};
       S.profile={name:$("f1").value,role:$("f2").value,skills:$("f3").value,motivation:$("f4").value};
-      if(isPast){toast("Profile updated.");} else {toast("Profile confirmed.");advance();}
+      const undo=()=>{S.profile=prev;S.viewing=1;render();toast("Changes undone. You're back on your profile.");};
+      if(isPast){toast("Profile updated.","Undo",undo);showStop(i,fromDone);} else {advance();toast("Profile confirmed.","Undo",undo);}
     };
+    if($("resetAI")) $("resetAI").onclick=()=>{const prev={...S.profile};S.profile={...S.profileAI};showStop(i,fromDone);
+      toast("Reset to the filled-in version. Save to keep it.","Undo",()=>{S.profile=prev;showStop(i,fromDone);});};
   }
 
   if(k==="match"){
@@ -340,7 +368,9 @@ function showInterview(n, h, isPast){
     h+=`<div class="room"><div class="tiles">
       <div class="tile" id="meTile"><div class="big">${esc(S.profile.name.split(" ").map(w=>w[0]).join("").slice(0,2))}</div><span class="name">You</span></div>
       <div class="tile"><div class="big">${who.init}</div><span class="name">${who.name}</span></div></div>
-      <div class="controls"><button id="cam">📷 Turn on my camera</button><button onclick="toast('Mic muted (demo).')">🎙 Mute</button><button class="end" id="end">Leave call</button></div></div>
+      ${st.confirmLeave
+        ? `<div class="leaveq">Leave the interview? ${n===1?"This counts as finishing Interview 1.":"This finishes your process."}<button class="backb" style="color:#fff;border-color:#777" id="cancelLeave">Stay in call</button><button class="end" id="end" style="border:0;border-radius:999px;padding:8px 14px;background:#c0392b;color:#fff">Yes, leave</button></div>`
+        : `<div class="controls"><button id="cam">📷 Turn on my camera</button><button onclick="toast('Mic muted (demo).')">🎙 Mute</button><button class="end" id="askLeave">Leave call</button></div>`}</div>
       <p class="note">Mock video room. Your camera is only shown on your own screen and nothing is recorded.</p>`;
   } else if(st.done){
     h+=`<div class="booked">✓ Completed · ${st.slot}</div>`;
@@ -362,9 +392,12 @@ function showInterview(n, h, isPast){
   m.querySelectorAll(".slot").forEach(b=>b.onclick=()=>{st.time=b.dataset.t;re();});
   if($("calPrev")) $("calPrev").onclick=()=>{const [y,mo]=st.month;st.month=mo===0?[y-1,11]:[y,mo-1];re();};
   if($("calNext")) $("calNext").onclick=()=>{const [y,mo]=st.month;st.month=mo===11?[y+1,0]:[y,mo+1];re();};
-  if($("book")) $("book").onclick=()=>{st.slot=label(fromKey(st.date))+" · "+st.time;st.booked=true;toast("Interview booked: "+st.slot);showInterview(n,revisitNote(S.viewing),isPast);};
+  if($("book")) $("book").onclick=()=>{st.slot=label(fromKey(st.date))+" · "+st.time;st.booked=true;re();
+    toast("Interview booked: "+st.slot,"Undo",()=>{st.booked=false;st.open=false;re();toast("Booking undone. Pick another time.");});};
   if($("skip")) $("skip").onclick=()=>{st.open=true;toast("It's "+st.slot.split(" · ")[1]+" on "+st.slot.split(" · ")[0]+". Your room is open.");showInterview(n,revisitNote(S.viewing),isPast);};
-  if($("resched")) $("resched").onclick=()=>{st.booked=false;st.open=false;toast("Pick a new time.");showInterview(n,revisitNote(S.viewing),isPast);};
+  if($("resched")) $("resched").onclick=()=>{const was=st.slot;st.booked=false;st.open=false;re();
+    toast("Pick a new time.","Keep "+was.split(" · ")[0],()=>{st.slot=was;st.booked=true;re();});};
+  if($("cancelLeave")) $("cancelLeave").onclick=()=>{st.confirmLeave=false;showInterview(n,"",isPast);};
   if($("join")) $("join").onclick=()=>{
     st.inRoom=true;
     S.interviews=n; renderStatus();
@@ -378,16 +411,17 @@ function showInterview(n, h, isPast){
       const t=$("meTile");t.querySelector(".big").style.display="none";t.prepend(v);$("cam").textContent="📷 Turn off camera";
     }catch(e){toast("Camera unavailable. That's fine for this demo.");}
   };
+  if($("askLeave")) $("askLeave").onclick=()=>{st.confirmLeave=true;showInterview(n,"",isPast);};
   if($("end")) $("end").onclick=()=>{
     if(S.stream){S.stream.getTracks().forEach(t=>t.stop());S.stream=null;}
-    st.inRoom=false; st.done=true;
+    st.inRoom=false; st.done=true; st.confirmLeave=false;
     if(n===1){ S.interviews=1; toast("Interview 1 complete. Only one to go."); advance(); }
     else { S.finished=true; S.viewing=-1; toast("Interview 2 complete."); renderStatus(); renderRail(); showDone(); window.scrollTo({top:0,behavior:"smooth"}); }
   };
 }
 
 function showDone(){
-  $("main").innerHTML=`<div class="card"><p class="eyebrow">Complete</p>
+  $("main").innerHTML=`<div class="navrow"><button class="backb" onclick="goBack(6)">← Back: Interview 2</button></div><div class="card"><p class="eyebrow">Complete</p>
   <h1>That's it: two interviews.</h1>
   <p>You're done, Jordan. Dana and the psychologist at CSG will compare notes, and you'll hear back from CSG within 3 business days. There are no more rounds, take-home tests, or panels.</p>
   <ul class="recap">
@@ -402,6 +436,7 @@ function showDone(){
   <div class="row"><button class="btn ghost" onclick="location.reload()">Restart demo</button></div></div>`;
 }
 
+S.profileAI={...S.profile};
 render();
 </script>
 </body>
