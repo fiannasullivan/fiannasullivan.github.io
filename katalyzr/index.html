@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Katalyzr Journey Rail</title>
+<title>Katalyzr Prototype</title>
 <style>
 :root{
   --bg:#f6f5f2; --panel:#ffffff; --ink:#1d1d1f; --muted:#6b6b70; --line:#dcdad4;
@@ -25,6 +25,7 @@ button{font:inherit;cursor:pointer}
 .top{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line)}
 .bar{max-width:1100px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 .logo{font-weight:700;letter-spacing:.02em}
+.ptitle{font-size:15px;font-weight:500;color:var(--muted);margin:0;padding-left:14px;border-left:1px solid var(--line)}
 .status{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px}
 .pill{border:1px solid var(--line);border-radius:999px;padding:4px 10px;white-space:nowrap}
 .pill strong{color:var(--accent)}
@@ -98,7 +99,7 @@ textarea{min-height:70px;resize:vertical}
 <body>
 <div class="top">
   <div class="bar">
-    <span class="logo">Katalyzr</span>
+    <span class="logo">Katalyzr</span><h1 class="ptitle">Journey rail</h1>
     <div class="status">
       <span class="pill">Interviews: <strong id="ivCount">0 of 2</strong></span>
       <span class="pill" id="timeLeft"></span>
