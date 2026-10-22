@@ -37,7 +37,15 @@ button{font:inherit;cursor:pointer}
 .dot{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--panel);border:2px solid var(--locked);font-size:14px;font-weight:600;transition:.2s}
 .stop .lbl{font-size:12.5px;line-height:1.25}
 .stop.done .dot{border-color:var(--done);background:var(--done);color:#fff}
-.stop.done{color:var(--ink)}
+.stop.done{color:var(--ink);cursor:pointer}
+.stop .bk{display:none}
+.stop.done:hover .dot,.stop.done:focus-visible .dot{box-shadow:0 0 0 5px color-mix(in srgb,var(--done) 25%,transparent);transform:scale(1.08)}
+.stop.done:hover .ck,.stop.done:focus-visible .ck{display:none}
+.stop.done:hover .bk,.stop.done:focus-visible .bk{display:inline}
+.stop.done:hover .lbl{text-decoration:underline;text-underline-offset:3px}
+.railhint{max-width:1100px;margin:-10px auto 0;padding:0 24px 10px;text-align:center;font-size:12.5px;color:var(--muted)}
+.btnback{background:var(--panel);color:var(--ink);border:1px solid var(--ink);border-radius:10px;padding:10px 16px;font-weight:600}
+.btnback:hover{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
 .stop.current .dot{border-color:var(--accent);background:var(--accent);color:#fff;box-shadow:0 0 0 6px var(--accent-soft)}
 .stop.current{color:var(--ink);font-weight:600}
 .stop.locked{cursor:not-allowed;opacity:.7}
@@ -131,6 +139,7 @@ textarea{min-height:70px;resize:vertical}
     </div>
   </div>
   <nav class="rail" id="rail" aria-label="Your hiring journey"><div class="fill" id="fill"></div></nav>
+  <div class="railhint" id="railhint"></div>
 </div>
 <main id="main"></main>
 <div class="toast" id="toast" role="status"></div>
@@ -202,11 +211,13 @@ function renderRail(){
     const locked = i>S.reached;
     const b=document.createElement("button");
     b.className="stop "+(done?"done":current?"current":"locked")+(i===S.viewing&&!S.finished?" viewing":"");
-    b.innerHTML=`<span class="dot">${done?"✓":locked?"🔒":i+1}</span><span class="lbl">${s.label}</span>`;
+    b.innerHTML=`<span class="dot">${done?'<span class="ck">✓</span><span class="bk">↩</span>':locked?"🔒":i+1}</span><span class="lbl">${s.label}</span>`;
+    if(done) b.title="Go back to "+s.label.replace("<br>"," – ");
     b.setAttribute("aria-label",s.label.replace("<br>"," – ")+(done?" (completed)":locked?" (locked)":" (current)"));
     b.onclick=()=>{ if(locked){toast("Finish the current step to unlock this one.");return;} S.viewing=i; S.finished? showStop(i,true) : render(); };
     rail.appendChild(b);
   });
+  $("railhint").innerHTML = S.reached>0||S.finished ? "Tip: click any green <b>✓</b> step to go back to it." : "";
   const pct = S.finished?1:S.reached/(STOPS.length-1);
   $("fill").style.width = `calc((100% - 48px) * ${5/6} * ${pct})`;
 }
@@ -221,11 +232,19 @@ function render(){renderStatus();renderRail();showStop(S.viewing,false);}
 
 // Escape route shown above every step: Back to the previous stop, plus a way back to where you were
 function nav(i){
-  const back = i>0 ? `<button class="backb" onclick="goBack(${i})">← Back: ${STOPS[i-1].label.split("<br>")[0]}</button>` : "";
+  const back = "";
   let note="";
   if(S.finished) note=`<div class="revisit">Looking back at a completed step. <button class="demo" onclick="S.viewing=-1;showDone();renderRail()">Back to summary →</button></div>`;
   else if(i<S.reached) note=`<div class="revisit">You're revisiting a completed step. Changes here are saved. <button class="demo" onclick="S.viewing=S.reached;render()">Back to current step →</button></div>`;
   return (back||note) ? `<div class="navrow">${back}${note}</div>` : "";
+}
+// Puts a "← Back" button at the start of the card's main action row
+function addCardBack(i){
+  if(i<=0) return;
+  const rows=$("main").querySelectorAll(".card > .row"); const row=rows[rows.length-1]; if(!row) return;
+  const b=document.createElement("button"); b.className="btnback"; b.textContent="← Back";
+  b.title="Go back to "+STOPS[i-1].label.replace("<br>"," – "); b.onclick=()=>goBack(i);
+  row.prepend(b);
 }
 function goBack(i){ stopAudio(); S.viewing=i-1; if(S.finished){renderRail();showStop(i-1,true);} else render(); window.scrollTo({top:0,behavior:"smooth"}); }
 const revisitNote = nav;
@@ -263,7 +282,7 @@ function showStop(i,fromDone){
     <div style="margin-top:14px"><label for="f3">Top skills</label><input id="f3" value="${esc(p.skills)}"></div>
     <div style="margin-top:14px"><label for="f4">What motivates you at work? (in your words)</label><textarea id="f4">${esc(p.motivation)}</textarea></div>
     <div class="row"><button class="btn" id="conf">${isPast?"Save changes":"Confirm profile"}</button><span class="muted" style="font-size:13px">🔒 Never shared outside Katalyzr</span></div></div>`;
-    m.innerHTML=h;
+    m.innerHTML=h; addCardBack(i);
     $("conf").onclick=()=>{
       const prev={...S.profile};
       S.profile={name:$("f1").value,role:$("f2").value,skills:$("f3").value,motivation:$("f4").value};
@@ -285,7 +304,7 @@ function showStop(i,fromDone){
       <li><strong>How you like to work:</strong> You both prefer small teams, direct feedback, and time to think before deciding.</li>
     </ul><p class="note">Matching does not use age, gender, race, or other demographic factors, and it doesn't reward simply being similar to the hiring manager. Dana sees these same three reasons, nothing more.</p></details>
     <div class="row">${isPast?`<span class="muted">✓ Match viewed</span>`:`<button class="btn" id="go">Continue to intro episode</button>`}</div></div>`;
-    m.innerHTML=h;
+    m.innerHTML=h; addCardBack(i);
     $("why").addEventListener("toggle",e=>{ if(e.target.open) toast("Showing why you were paired."); });
     if($("go")) $("go").onclick=()=>advance();
   }
@@ -309,7 +328,7 @@ function showStop(i,fromDone){
       ).map(c=>`<li data-t="${c[0]}"><span>${c[0]}</span><span>${c[1]}</span></li>`).join("")}</ul>
     </div>
     <div class="row">${isPast?`<span class="muted">✓ Episode started</span>`:`<button class="btn" id="go" ${S.episodeStarted?"":"disabled"}>Continue to Interview 1</button>${S.episodeStarted?"":`<span class="muted" style="font-size:13px">Press play to continue</span>`}`}</div></div>`;
-    m.innerHTML=h;
+    m.innerHTML=h; addCardBack(i);
     const setMode=md=>{stopAudio();S.mode=md;S.pos=0;showStop(i,fromDone);toast(md==="highlight"?"Switched to 3-minute highlight.":"Switched to full episode.");};
     $("mH").onclick=()=>setMode("highlight"); $("mF").onclick=()=>setMode("full");
     $("play").onclick=()=>togglePlay(dur,i,fromDone);
@@ -385,7 +404,7 @@ function showInterview(n, h, isPast){
       <button class="btn ghost" id="resched">Change time</button></div>`;
   }
   h+=`</div>`;
-  m.innerHTML=h;
+  m.innerHTML=h; if(!st.inRoom) addCardBack(n===1?4:5);
 
   const re=()=>showInterview(n,revisitNote(S.viewing),isPast);
   m.querySelectorAll(".day.avail").forEach(b=>b.onclick=()=>{st.date=b.dataset.k;st.time=null;re();});
@@ -421,7 +440,7 @@ function showInterview(n, h, isPast){
 }
 
 function showDone(){
-  $("main").innerHTML=`<div class="navrow"><button class="backb" onclick="goBack(6)">← Back: Interview 2</button></div><div class="card"><p class="eyebrow">Complete</p>
+  $("main").innerHTML=`<div class="card"><p class="eyebrow">Complete</p>
   <h1>That's it: two interviews.</h1>
   <p>You're done, Jordan. Dana and the psychologist at CSG will compare notes, and you'll hear back from CSG within 3 business days. There are no more rounds, take-home tests, or panels.</p>
   <ul class="recap">
@@ -433,7 +452,7 @@ function showDone(){
     <li>Interview 2 with Dana Whitfield · ${S.int[2].slot}</li>
   </ul>
   <p class="note">Click any stop on the rail to look back. 🔒 Everything stays private between you and CSG.</p>
-  <div class="row"><button class="btn ghost" onclick="location.reload()">Restart demo</button></div></div>`;
+  <div class="row"><button class="btnback" onclick="goBack(6)">← Back</button><button class="btn ghost" onclick="location.reload()">Restart demo</button></div></div>`;
 }
 
 S.profileAI={...S.profile};
