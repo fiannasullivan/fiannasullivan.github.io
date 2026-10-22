@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Katalyzr Journey Rail</title>
+<style>
+:root{
+  --bg:#f6f5f2; --panel:#ffffff; --ink:#1d1d1f; --muted:#6b6b70; --line:#dcdad4;
+  --accent:#1f5f5b; --accent-soft:#e3efed; --done:#2e7d4f; --locked:#b9b7b0; --warn:#8a5a00;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#16171a; --panel:#1f2024; --ink:#ececee; --muted:#a3a3a8; --line:#34353a;
+    --accent:#6cc2b9; --accent-soft:#1f3633; --done:#6fcf97; --locked:#55565c; --warn:#e0b25c;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#16171a; --panel:#1f2024; --ink:#ececee; --muted:#a3a3a8; --line:#34353a;
+  --accent:#6cc2b9; --accent-soft:#1f3633; --done:#6fcf97; --locked:#55565c; --warn:#e0b25c;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+button{font:inherit;cursor:pointer}
+.top{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line)}
+.bar{max-width:1100px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.logo{font-weight:700;letter-spacing:.02em}
+.status{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px}
+.pill{border:1px solid var(--line);border-radius:999px;padding:4px 10px;white-space:nowrap}
+.pill strong{color:var(--accent)}
+.pill.private{background:var(--accent-soft);border-color:transparent}
+.rail{max-width:1100px;margin:0 auto;padding:8px 24px 18px;display:grid;grid-template-columns:repeat(6,1fr);position:relative}
+.rail::before{content:"";position:absolute;left:calc(24px + 100%/12 - 4px);right:calc(24px + 100%/12 - 4px);top:25px;height:3px;background:var(--line)}
+.fill{position:absolute;left:calc(24px + (100% - 48px)/12);top:25px;height:3px;background:var(--done);transition:width .4s}
+.stop{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;background:none;border:0;color:var(--muted);padding:0 4px;text-align:center}
+.dot{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--panel);border:2px solid var(--locked);font-size:14px;font-weight:600;transition:.2s}
+.stop .lbl{font-size:12.5px;line-height:1.25}
+.stop.done .dot{border-color:var(--done);background:var(--done);color:#fff}
+.stop.done{color:var(--ink)}
+.stop.current .dot{border-color:var(--accent);background:var(--accent);color:#fff;box-shadow:0 0 0 6px var(--accent-soft)}
+.stop.current{color:var(--ink);font-weight:600}
+.stop.locked{cursor:not-allowed;opacity:.7}
+.stop.viewing .lbl{text-decoration:underline;text-underline-offset:3px}
+main{max-width:860px;margin:28px auto;padding:0 24px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:28px}
+.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 6px}
+h1{font-size:24px;margin:0 0 10px}
+h2{font-size:16px;margin:22px 0 8px}
+p{margin:0 0 12px}
+.muted{color:var(--muted)}
+.btn{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:10px 18px;font-weight:600}
+.btn:disabled{background:var(--locked);cursor:not-allowed}
+.btn.ghost{background:none;color:var(--accent);border:1px solid var(--accent)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:20px}
+details{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:14px 0}
+summary{cursor:pointer;font-weight:600;color:var(--accent)}
+details ul{margin:10px 0 0;padding-left:20px}
+details li{margin-bottom:6px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+input,textarea{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px}
+textarea{min-height:70px;resize:vertical}
+.person{display:flex;gap:16px;align-items:center}
+.avatar{width:64px;height:64px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:700;font-size:20px;flex:none}
+.player{border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:12px}
+.track{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin:12px 0 6px}
+.track div{height:100%;width:0;background:var(--accent);transition:width .2s linear}
+.times{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.chapters{list-style:none;padding:0;margin:12px 0 0}
+.chapters li{display:flex;gap:10px;padding:6px 0;border-top:1px solid var(--line);font-size:14px}
+.chapters li span:first-child{color:var(--muted);width:44px;flex:none}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{background:none;border:0;padding:7px 12px;color:var(--ink)}
+.seg button.on{background:var(--accent);color:#fff}
+.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+.slot{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;text-align:left;color:var(--ink)}
+.slot.on{border-color:var(--accent);background:var(--accent-soft);font-weight:600}
+.booked{border:1px dashed var(--accent);border-radius:12px;padding:14px 16px;margin-top:16px;background:var(--accent-soft)}
+.demo{background:none;border:1px dashed var(--muted);color:var(--muted);border-radius:8px;padding:6px 10px;font-size:12.5px}
+.room{background:#111;border-radius:14px;padding:14px;margin-top:6px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tile{aspect-ratio:16/10;background:#2a2b2f;border-radius:10px;position:relative;display:grid;place-items:center;color:#ddd;overflow:hidden}
+.tile video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+.tile .big{width:72px;height:72px;border-radius:50%;background:#3d3f45;display:grid;place-items:center;font-size:24px;font-weight:700}
+.tile .name{position:absolute;left:10px;bottom:8px;font-size:12px;background:rgba(0,0,0,.5);padding:2px 8px;border-radius:6px}
+.controls{display:flex;justify-content:center;gap:10px;margin-top:12px}
+.controls button{border:0;border-radius:999px;padding:8px 14px;background:#3d3f45;color:#fff;font-size:13px}
+.controls .end{background:#c0392b}
+.note{font-size:13px;color:var(--muted);margin-top:10px}
+.recap{list-style:none;padding:0;margin:16px 0 0}
+.recap li{padding:8px 0;border-top:1px solid var(--line);display:flex;gap:10px}
+.recap li::before{content:"✓";color:var(--done);font-weight:700}
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);opacity:0;background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:10px;font-size:14px;transition:.25s;pointer-events:none;z-index:10}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.revisit{font-size:13px;background:var(--accent-soft);border-radius:8px;padding:8px 12px;margin-bottom:14px}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="bar">
+    <span class="logo">Katalyzr</span>
+    <div class="status">
+      <span class="pill">Interviews: <strong id="ivCount">0 of 2</strong></span>
+      <span class="pill" id="timeLeft"></span>
+      <span class="pill private">🔒 Private: visible only to you and CSG</span>
+    </div>
+  </div>
+  <nav class="rail" id="rail" aria-label="Your hiring journey"><div class="fill" id="fill"></div></nav>
+</div>
+<main id="main"></main>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const STOPS = [
+  {key:"invite",  label:"Invite",                 mins:2},
+  {key:"profile", label:"Profile",                mins:3},
+  {key:"match",   label:"Match",                  mins:3},
+  {key:"episode", label:"Intro Episode",          mins:3},
+  {key:"int1",    label:"Interview 1<br>Psychologist at CSG", mins:45},
+  {key:"int2",    label:"Interview 2<br>Hiring manager",      mins:60},
+];
+const SLOTS1 = ["Tue, Oct 27 · 10:00 AM","Wed, Oct 28 · 1:30 PM","Thu, Oct 29 · 4:00 PM"];
+const SLOTS2 = ["Mon, Nov 2 · 11:00 AM","Tue, Nov 3 · 2:00 PM","Thu, Nov 5 · 9:30 AM"];
+
+const S = {
+  reached:0, viewing:0, finished:false, interviews:0,
+  profile:{name:"Jordan Reyes", role:"Senior Product Designer", skills:"Service design, research synthesis, design systems", motivation:"Building products that make complicated systems feel human."},
+  episodeStarted:false, mode:"highlight", pos:0, playing:false, timer:null,
+  int:{1:{slot:null,booked:false,open:false,inRoom:false,done:false},2:{slot:null,booked:false,open:false,inRoom:false,done:false}},
+  stream:null
+};
+
+const $ = id => document.getElementById(id);
+function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),2400);}
+function esc(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function fmt(sec){sec=Math.floor(sec);return Math.floor(sec/60)+":"+String(sec%60).padStart(2,"0");}
+
+function renderStatus(){
+  $("ivCount").textContent = S.interviews+" of 2";
+  const left = S.finished ? 0 : STOPS.slice(S.reached).reduce((a,s)=>a+s.mins,0);
+  const h=Math.floor(left/60), m=left%60;
+  $("timeLeft").textContent = S.finished ? "Process complete" : "About "+(h?h+" hr ":"")+(m?m+" min":"")+" of your time left";
+}
+
+function renderRail(){
+  const rail=$("rail"); rail.querySelectorAll(".stop").forEach(n=>n.remove());
+  STOPS.forEach((s,i)=>{
+    const done = S.finished || i<S.reached;
+    const current = !S.finished && i===S.reached;
+    const locked = i>S.reached;
+    const b=document.createElement("button");
+    b.className="stop "+(done?"done":current?"current":"locked")+(i===S.viewing&&!S.finished?" viewing":"");
+    b.innerHTML=`<span class="dot">${done?"✓":locked?"🔒":i+1}</span><span class="lbl">${s.label}</span>`;
+    b.setAttribute("aria-label",s.label.replace("<br>"," – ")+(done?" (completed)":locked?" (locked)":" (current)"));
+    b.onclick=()=>{ if(locked){toast("Finish the current step to unlock this one.");return;} S.viewing=i; S.finished? showStop(i,true) : render(); };
+    rail.appendChild(b);
+  });
+  const pct = S.finished?1:S.reached/(STOPS.length-1);
+  $("fill").style.width = `calc((100% - 48px) * ${5/6} * ${pct})`;
+}
+
+function advance(){
+  stopAudio();
+  if(S.reached<STOPS.length-1){S.reached++; S.viewing=S.reached;}
+  render(); window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function render(){renderStatus();renderRail();showStop(S.viewing,false);}
+
+function revisitNote(i){
+  return (i<S.reached && !S.finished) ? `<div class="revisit">You're revisiting a completed step. <button class="demo" onclick="S.viewing=S.reached;render()">Back to current step →</button></div>` : "";
+}
+
+function showStop(i,fromDone){
+  const m=$("main"), k=STOPS[i].key;
+  if(S.finished && !fromDone){ return showDone(); }
+  let h = fromDone ? `<div class="revisit">Looking back at a completed step. <button class="demo" onclick="S.viewing=-1;showDone();renderRail()">Back to summary →</button></div>` : revisitNote(i);
+  const isPast = i<S.reached || S.finished;
+
+  if(k==="invite"){
+    h+=`<div class="card"><p class="eyebrow">Step 1 of 6 · Invitation</p>
+    <h1>Jordan, you've been personally invited to Katalyzr.</h1>
+    <p>CSG works with a small number of hiring managers who are looking for people like you, people who are great at their work <em>and</em> driven by why they do it. Katalyzr is invite-only. There are no job boards, no résumé stack, and no public profile.</p>
+    <p>If you accept, your whole process is <strong>two conversations</strong>: one with a psychologist at CSG and one with a hiring manager you've been matched with.</p>
+    <details open><summary>How did you find me?</summary><ul>
+      <li>We found you through your <strong>public LinkedIn profile</strong>, using only what LinkedIn's terms of service allow.</li>
+      <li>We used your title, skills, and experience to start a profile for you. You can review and edit every field on the next step.</li>
+      <li>Nothing here is public. Only you and CSG can see your information, and you can decline at any time.</li>
+    </ul></details>
+    <div class="row">${isPast?`<span class="muted">✓ Invite accepted</span>`:`<button class="btn" id="accept">Accept invite</button><button class="btn ghost" onclick="toast('No problem. Your data will be deleted and you won\\'t hear from us again.')">Not for me</button>`}</div></div>`;
+    m.innerHTML=h; if($("accept")) $("accept").onclick=()=>{toast("Invite accepted. Welcome to Katalyzr.");advance();};
+  }
+
+  if(k==="profile"){
+    const p=S.profile;
+    h+=`<div class="card"><p class="eyebrow">Step 2 of 6 · Your profile</p>
+    <h1>Does this sound like you?</h1>
+    <p class="muted">We started this from your public LinkedIn. Change anything that's off. This is what the matching uses, along with what motivates you.</p>
+    <div class="grid2" style="margin-top:16px">
+      <div><label for="f1">Name</label><input id="f1" value="${esc(p.name)}"></div>
+      <div><label for="f2">Current role</label><input id="f2" value="${esc(p.role)}"></div>
+    </div>
+    <div style="margin-top:14px"><label for="f3">Top skills</label><input id="f3" value="${esc(p.skills)}"></div>
+    <div style="margin-top:14px"><label for="f4">What motivates you at work? (in your words)</label><textarea id="f4">${esc(p.motivation)}</textarea></div>
+    <div class="row"><button class="btn" id="conf">${isPast?"Save changes":"Confirm profile"}</button><span class="muted" style="font-size:13px">🔒 Never shared outside Katalyzr</span></div></div>`;
+    m.innerHTML=h;
+    $("conf").onclick=()=>{
+      S.profile={name:$("f1").value,role:$("f2").value,skills:$("f3").value,motivation:$("f4").value};
+      if(isPast){toast("Profile updated.");} else {toast("Profile confirmed.");advance();}
+    };
+  }
+
+  if(k==="match"){
+    h+=`<div class="card"><p class="eyebrow">Step 3 of 6 · Your match</p>
+    <h1>You've been matched with one hiring manager.</h1>
+    <div class="person" style="margin-top:16px"><div class="avatar">DW</div>
+      <div><strong style="font-size:18px">Dana Whitfield</strong><br><span class="muted">VP of Product · Meridian Health · Chicago (hybrid)</span><br><span style="font-size:14px">Role: Principal Product Designer, Care Experience</span></div></div>
+    <details id="why"><summary>Why you were paired</summary><ul>
+      <li><strong>Shared motivation:</strong> You both describe the goal of your work as making complicated systems feel human. Dana talks about this a lot on her podcast episode.</li>
+      <li><strong>Skills she needs:</strong> Her team is rebuilding patient scheduling and needs someone strong in service design and research synthesis. Those are your top two skills.</li>
+      <li><strong>How you like to work:</strong> You both prefer small teams, direct feedback, and time to think before deciding.</li>
+    </ul><p class="note">Matching does not use age, gender, race, or other demographic factors, and it doesn't reward simply being similar to the hiring manager. Dana sees these same three reasons, nothing more.</p></details>
+    <div class="row">${isPast?`<span class="muted">✓ Match viewed</span>`:`<button class="btn" id="go">Continue to intro episode</button>`}</div></div>`;
+    m.innerHTML=h;
+    $("why").addEventListener("toggle",e=>{ if(e.target.open) toast("Showing why you were paired."); });
+    if($("go")) $("go").onclick=()=>advance();
+  }
+
+  if(k==="episode"){
+    const dur = S.mode==="highlight"?180:3480;
+    h+=`<div class="card"><p class="eyebrow">Step 4 of 6 · Get to know Dana</p>
+    <h1>Hear from Dana before you meet her.</h1>
+    <p class="muted">Dana was a guest on CSG's podcast. Start with a 3-minute highlight, or listen to the full conversation if you want more.</p>
+    <div class="player">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div><strong>Ep. 42 · Dana Whitfield on designing care people can actually use</strong></div>
+        <div class="seg"><button id="mH" class="${S.mode==="highlight"?"on":""}">3-min highlight</button><button id="mF" class="${S.mode==="full"?"on":""}">Full episode (58 min)</button></div>
+      </div>
+      <div class="track"><div id="prog"></div></div>
+      <div class="times"><span id="cur">${fmt(S.pos)}</span><span>${fmt(dur)}</span></div>
+      <div class="row" style="margin-top:10px"><button class="btn" id="play">${S.playing?"❚❚ Pause":"▶ Play"}</button><span class="note" style="margin:0">Demo plays sped up.</span></div>
+      <ul class="chapters">${(S.mode==="highlight"
+        ?[["0:00","Why I left consulting for healthcare"],["1:05","What a great first 90 days looks like on my team"],["2:10","The kind of person I want to hire"]]
+        :[["0:00","Intro"],["6:40","Why I left consulting for healthcare"],["21:15","Building a team that disagrees well"],["38:30","What a great first 90 days looks like"],["51:00","The kind of person I want to hire"]]
+      ).map(c=>`<li data-t="${c[0]}"><span>${c[0]}</span><span>${c[1]}</span></li>`).join("")}</ul>
+    </div>
+    <div class="row">${isPast?`<span class="muted">✓ Episode started</span>`:`<button class="btn" id="go" ${S.episodeStarted?"":"disabled"}>Continue to Interview 1</button>${S.episodeStarted?"":`<span class="muted" style="font-size:13px">Press play to continue</span>`}`}</div></div>`;
+    m.innerHTML=h;
+    const setMode=md=>{stopAudio();S.mode=md;S.pos=0;showStop(i,fromDone);toast(md==="highlight"?"Switched to 3-minute highlight.":"Switched to full episode.");};
+    $("mH").onclick=()=>setMode("highlight"); $("mF").onclick=()=>setMode("full");
+    $("play").onclick=()=>togglePlay(dur,i,fromDone);
+    m.querySelectorAll(".chapters li").forEach(li=>li.onclick=()=>{const [mm,ss]=li.dataset.t.split(":");S.pos=(+mm)*60+(+ss);updProg(dur);toast("Jumped to "+li.dataset.t);});
+    updProg(dur);
+    if($("go")) $("go").onclick=()=>advance();
+  }
+
+  if(k==="int1"||k==="int2") showInterview(k==="int1"?1:2, h, isPast);
+}
+
+function updProg(dur){const p=$("prog"); if(!p) return; p.style.width=Math.min(100,S.pos/dur*100)+"%"; $("cur").textContent=fmt(S.pos);}
+function togglePlay(dur,i,fromDone){
+  if(S.playing){stopAudio();$("play").textContent="▶ Play";return;}
+  S.playing=true; $("play").textContent="❚❚ Pause";
+  if(!S.episodeStarted){S.episodeStarted=true; toast("Playing highlight. You can continue whenever you're ready."); if($("go")){$("go").disabled=false; const n=$("go").nextElementSibling; if(n) n.remove();}}
+  const step = dur/60;
+  S.timer=setInterval(()=>{S.pos+=step/4; if(S.pos>=dur){S.pos=dur;stopAudio();if($("play"))$("play").textContent="▶ Replay";S.pos=0;toast("Highlight finished.");} updProg(dur);},250);
+}
+function stopAudio(){S.playing=false;clearInterval(S.timer);}
+
+function showInterview(n, h, isPast){
+  const st=S.int[n], m=$("main"), slots=n===1?SLOTS1:SLOTS2;
+  const who = n===1
+    ? {title:"Interview 1 of 2 · Psychologist at CSG", head:"A two-way check, not a test.", init:"PC", name:"Psychologist at CSG",
+       body:"This is a relaxed 45-minute conversation. The psychologist helps you think through what you want from your next role and what Dana's team is really like, and she can share your strengths with Dana in your words. There's nothing to prepare and no right answers. You can also ask her anything."}
+    : {title:"Interview 2 of 2 · Hiring manager", head:"Meet Dana. This is the last step.", init:"DW", name:"Dana Whitfield",
+       body:"A 60-minute conversation with Dana Whitfield. She's already heard your strengths from the psychologist at CSG, in your words, so this is about getting to know each other, not proving yourself."};
+  h+=`<div class="card"><p class="eyebrow">${who.title}</p><h1>${who.head}</h1><p>${who.body}</p>`;
+
+  if(st.inRoom){
+    h+=`<div class="room"><div class="tiles">
+      <div class="tile" id="meTile"><div class="big">${esc(S.profile.name.split(" ").map(w=>w[0]).join("").slice(0,2))}</div><span class="name">You</span></div>
+      <div class="tile"><div class="big">${who.init}</div><span class="name">${who.name}</span></div></div>
+      <div class="controls"><button id="cam">📷 Turn on my camera</button><button onclick="toast('Mic muted (demo).')">🎙 Mute</button><button class="end" id="end">Leave call</button></div></div>
+      <p class="note">Mock video room. Your camera is only shown on your own screen and nothing is recorded.</p>`;
+  } else if(st.done){
+    h+=`<div class="booked">✓ Completed · ${st.slot}</div>`;
+  } else if(!st.booked){
+    h+=`<h2>Pick a time</h2><div class="slots">${slots.map((s,j)=>`<button class="slot ${st.slot===s?"on":""}" data-j="${j}">${s.replace(" · ","<br>")} CT</button>`).join("")}</div>
+      <div class="row"><button class="btn" id="book" ${st.slot?"":"disabled"}>Book this time</button></div>`;
+  } else {
+    h+=`<div class="booked"><strong>Booked: ${st.slot} CT</strong><br>
+      ${st.open?"Your room is open now.":"Your room opens at your booked time. We'll send a reminder."}</div>
+      <div class="row"><button class="btn" id="join" ${st.open?"":"disabled"}>Join interview</button>
+      ${st.open?"":`<button class="demo" id="skip">⏩ Prototype only: skip to booked time</button>`}
+      <button class="btn ghost" id="resched">Change time</button></div>`;
+  }
+  h+=`</div>`;
+  m.innerHTML=h;
+
+  m.querySelectorAll(".slot").forEach(b=>b.onclick=()=>{st.slot=slots[+b.dataset.j];showInterview(n,revisitNote(S.viewing),isPast);});
+  if($("book")) $("book").onclick=()=>{st.booked=true;toast("Interview booked: "+st.slot);showInterview(n,revisitNote(S.viewing),isPast);};
+  if($("skip")) $("skip").onclick=()=>{st.open=true;toast("It's "+st.slot.split(" · ")[1]+" on "+st.slot.split(" · ")[0]+". Your room is open.");showInterview(n,revisitNote(S.viewing),isPast);};
+  if($("resched")) $("resched").onclick=()=>{st.booked=false;st.open=false;toast("Pick a new time.");showInterview(n,revisitNote(S.viewing),isPast);};
+  if($("join")) $("join").onclick=()=>{
+    st.inRoom=true;
+    S.interviews=n; renderStatus();
+    toast(n===1?"You've joined. The psychologist will be right with you.":"You've joined. Dana is here.");
+    showInterview(n,"",isPast);
+  };
+  if($("cam")) $("cam").onclick=async()=>{
+    try{ if(S.stream){S.stream.getTracks().forEach(t=>t.stop());S.stream=null;$("meTile").querySelector("video")?.remove();$("cam").textContent="📷 Turn on my camera";return;}
+      S.stream=await navigator.mediaDevices.getUserMedia({video:true});
+      const v=document.createElement("video");v.autoplay=true;v.muted=true;v.playsInline=true;v.srcObject=S.stream;
+      const t=$("meTile");t.querySelector(".big").style.display="none";t.prepend(v);$("cam").textContent="📷 Turn off camera";
+    }catch(e){toast("Camera unavailable. That's fine for this demo.");}
+  };
+  if($("end")) $("end").onclick=()=>{
+    if(S.stream){S.stream.getTracks().forEach(t=>t.stop());S.stream=null;}
+    st.inRoom=false; st.done=true;
+    if(n===1){ S.interviews=1; toast("Interview 1 complete. Only one to go."); advance(); }
+    else { S.finished=true; S.viewing=-1; toast("Interview 2 complete."); renderStatus(); renderRail(); showDone(); window.scrollTo({top:0,behavior:"smooth"}); }
+  };
+}
+
+function showDone(){
+  $("main").innerHTML=`<div class="card"><p class="eyebrow">Complete</p>
+  <h1>That's it: two interviews.</h1>
+  <p>You're done, Jordan. Dana and the psychologist at CSG will compare notes, and you'll hear back from CSG within 3 business days. There are no more rounds, take-home tests, or panels.</p>
+  <ul class="recap">
+    <li>Accepted your invite and saw exactly how CSG found you</li>
+    <li>Confirmed your profile in your own words</li>
+    <li>Matched with Dana Whitfield, and saw why</li>
+    <li>Heard Dana's story before meeting her</li>
+    <li>Interview 1 with the psychologist at CSG · ${S.int[1].slot}</li>
+    <li>Interview 2 with Dana Whitfield · ${S.int[2].slot}</li>
+  </ul>
+  <p class="note">Click any stop on the rail to look back. 🔒 Everything stays private between you and CSG.</p>
+  <div class="row"><button class="btn ghost" onclick="location.reload()">Restart demo</button></div></div>`;
+}
+
+render();
+</script>
+</body>
+</html>
