@@ -1,462 +1,884 @@
-<!doctype html>
-<html lang="en">
-<head>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Katalyzr Prototype</title>
+<title>Katalyzr Applicant Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap">
 <style>
+/* Layout: fixed left sidebar (doubles as progress), full-width main column. Calm light-blue ground, navy ink, a little sand for warmth. Single light look on purpose. */
 :root{
-  --bg:#f6f5f2; --panel:#ffffff; --ink:#1d1d1f; --muted:#6b6b70; --line:#dcdad4;
-  --accent:#1f5f5b; --accent-soft:#e3efed; --done:#2e7d4f; --locked:#b9b7b0; --warn:#8a5a00;
+  color-scheme:light;
+  --paper:#edf3f8; --card:#ffffff; --ink:#1b2b3c; --ink2:#506275; --ink3:#8b9bad;
+  --line:#d5e1ec; --fill:#e4edf5; --accent:#2e6da4; --accent-soft:#deebf7; --ok:#2f7d5b; --bad:#c94a4a;
+  --navy:#16263a; --sand:#f4e6cf; --sand-ink:#8a6532;
+  --f:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --disp:'Source Serif 4',Georgia,'Times New Roman',serif;
+  --mono:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+  --sb:256px; --r:14px;
+  --shadow:0 1px 2px rgba(22,38,58,.05),0 10px 30px rgba(22,38,58,.06);
 }
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#16171a; --panel:#1f2024; --ink:#ececee; --muted:#a3a3a8; --line:#34353a;
-    --accent:#6cc2b9; --accent-soft:#1f3633; --done:#6fcf97; --locked:#55565c; --warn:#e0b25c;
-  }
+html,body,#app{height:100%}
+body{background:var(--paper);color:var(--ink);font:15px/1.55 var(--f)}
+h1,h2,h3{margin:0;line-height:1.2;text-wrap:balance}
+h1{font-family:var(--disp);font-size:36px;font-weight:600;letter-spacing:-.01em}
+h2{font-family:var(--disp);font-size:22px;font-weight:600}
+h3{font-size:15px;font-weight:600}
+p{margin:0}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,[tabindex]:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.eyebrow{font:500 11px/1.3 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink2)}
+.muted{color:var(--ink2)}
+.small{font-size:13px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:10px 20px;font-weight:500}
+.btn:hover{background:var(--fill)}
+.btn.primary{background:var(--navy);border-color:var(--navy);color:#fff}
+.btn.primary:hover{background:var(--accent);border-color:var(--accent)}
+.btn.ghost{border-color:var(--line)}
+.btn.danger{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+
+/* placeholder image (wireframe X) */
+.ph{background:linear-gradient(140deg,var(--accent-soft),#c3d8ec);border-radius:var(--r);position:relative;flex:none;overflow:hidden;display:grid;place-items:center}
+.ph.hm{background:linear-gradient(140deg,var(--sand),#e6cb9f)}
+.ph .ini{font-family:var(--disp);font-weight:600;color:var(--navy);line-height:1}
+.ph.hm .ini{color:#5d4220}
+.ph.round{border-radius:50%}
+.ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.ph .ph-l{position:absolute;left:6px;bottom:4px;font:500 10px var(--mono);color:var(--ink3);background:var(--fill);padding:0 3px}
+
+/* shell */
+.shell{display:grid;grid-template-columns:var(--sb) minmax(0,1fr);height:100%;transition:grid-template-columns .3s}
+.shell.collapsed{grid-template-columns:0 minmax(0,1fr)}
+.sb{border-right:1px solid var(--line);background:var(--card);overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.sb-in{width:var(--sb);padding:20px 16px;display:flex;flex-direction:column;gap:20px;height:100%;overflow:auto}
+.logo{font:600 15px var(--mono);letter-spacing:.2em;color:var(--navy);display:inline-flex;align-items:center;gap:10px;align-self:flex-start}
+.logo::before{content:"";width:12px;height:12px;border-radius:50%;background:var(--accent);box-shadow:8px 0 0 var(--sand)}
+.me{display:flex;gap:10px;align-items:center}
+.me b{display:block;font-size:14px}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav-i{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:center;text-align:left;border:0;background:none;padding:9px 10px;border-radius:6px}
+.nav-i:hover{background:var(--fill)}
+.nav-i.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.nav-i.locked{color:var(--ink3)}
+.nav-i .sub{display:block;font-size:11px;color:var(--ink3);font-weight:400}
+.nav-i .badge{font:500 10px var(--mono);color:var(--ink3)}
+.nav-i .done{color:var(--ok)}
+.sb-prog{margin-top:auto;border-top:1.5px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:8px}
+.bar{height:6px;background:var(--fill);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ink)}
+
+.main{overflow:auto;height:100%;min-width:0}
+.wrap{max-width:1480px;margin:0 auto;padding:32px max(16px,3vw,env(safe-area-inset-right,0px)) 56px max(16px,3vw,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:28px}
+.pagehead{display:flex;flex-direction:column;gap:10px}
+.back{align-self:flex-start;border:0;background:none;color:var(--ink2);padding:4px 0;display:inline-flex;gap:6px;align-items:center;font-size:14px}
+.back:hover{color:var(--ink)}
+.row .back{align-self:center}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:24px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px;min-width:0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1.5px solid var(--line);border-radius:999px;padding:3px 10px;font-size:13px;background:var(--card)}
+.chip.match{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+
+/* full-screen (welcome, reveal) */
+.full{min-height:100%;box-sizing:border-box;display:grid;place-items:center;padding:40px max(16px,env(safe-area-inset-right,0px)) 56px max(16px,env(safe-area-inset-left,0px));background:radial-gradient(ellipse at 50% 0%,#d4e5f5,var(--paper) 65%)}
+.invite{max-width:620px;display:flex;flex-direction:column;gap:22px}
+.invite h1{font-size:46px}
+.how{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:0;border:1px solid var(--line);border-radius:var(--r);background:var(--card);box-shadow:var(--shadow)}
+.how li{display:grid;grid-template-columns:28px 1fr;gap:12px;padding:14px 16px;border-top:1px solid var(--line)}
+.welcome{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);min-height:100%}
+.w-left{display:grid;place-items:center;padding:48px max(16px,4vw,env(safe-area-inset-left,0px))}
+.w-right{background:radial-gradient(circle at 85% 12%,rgba(244,230,207,.35),transparent 42%),linear-gradient(160deg,#2a5580,var(--navy));color:#fff;display:flex;flex-direction:column;justify-content:center;gap:32px;padding:48px max(16px,4vw,env(safe-area-inset-right,0px))}
+.w-right .eyebrow{color:rgba(255,255,255,.7)}
+.w-quote{font:500 36px/1.25 var(--disp);max-width:18ch;text-wrap:balance}
+.w-from{display:flex;gap:12px;align-items:center}
+.w-from b{display:block}
+.w-from span{font-size:13px;color:rgba(255,255,255,.75)}
+.w-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;border-top:1px solid rgba(255,255,255,.2);padding-top:24px}
+.w-stats b{display:block;font:600 44px/1 var(--disp);color:var(--sand);margin-bottom:6px}
+.w-stats span{font-size:13px;color:rgba(255,255,255,.8)}
+.how li:first-child{border-top:0}
+.how .n{font:500 13px var(--mono);color:var(--ink3)}
+.how b{display:block}
+.how .two{color:var(--accent);font-weight:600}
+
+/* profile */
+.prof{display:grid;grid-template-columns:200px minmax(0,1fr);gap:24px;align-items:start}
+.li-note{display:flex;gap:10px;align-items:center;border:1.5px dashed var(--accent);background:var(--accent-soft);color:var(--accent);border-radius:var(--r);padding:10px 14px;font-size:14px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field-h{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.field label{font-weight:600;font-size:14px}
+.src{font:500 10px var(--mono);color:var(--ink3);text-transform:uppercase;letter-spacing:.06em}
+.edited{font:500 10px var(--mono);color:var(--accent);text-transform:uppercase;letter-spacing:.06em;display:none}
+.field.is-edited .edited{display:inline}
+.field input,.field textarea{font:inherit;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:6px;padding:9px 11px;width:100%;box-sizing:border-box;resize:vertical}
+.field input:focus,.field textarea:focus{border-color:var(--ink)}
+.filebtn{position:relative;overflow:hidden}
+.filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+
+/* waiting */
+.wait{display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px;padding:56px 16px}
+.spin{width:72px;height:72px;border:2px dashed var(--ink3);border-radius:50%;display:grid;place-items:center;animation:spin 12s linear infinite}
+.spin b{font:600 18px var(--mono);animation:spin 12s linear infinite reverse}
+@keyframes spin{to{transform:rotate(360deg)}}
+.checks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;text-align:left}
+.checks li{display:flex;gap:10px;align-items:center;font-size:14px;color:var(--ink3)}
+.checks li.done{color:var(--ink)}
+.checks li.now{color:var(--ink);font-weight:600}
+.dot{width:14px;height:14px;border:1.5px solid currentColor;border-radius:50%;flex:none;display:grid;place-items:center;font-size:9px}
+.done .dot{background:var(--ink);border-color:var(--ink);color:#fff}
+.now .dot{border-style:dashed;animation:spin 4s linear infinite}
+
+/* reveal */
+.seal{width:min(440px,100%);aspect-ratio:4/3;border:1px solid var(--line);border-radius:20px;background:var(--card);box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:24px;box-sizing:border-box;transition:transform .5s,opacity .5s}
+.seal:hover{transform:translateY(-3px)}
+.seal .k{width:56px;height:56px;border-radius:50%;background:var(--navy);color:var(--sand);display:grid;place-items:center;font:600 24px var(--disp)}
+.seal.opening{transform:scale(1.08) rotateX(70deg);opacity:0}
+.pulse{animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 10px rgba(47,86,200,.12)}}
+.revealed{max-width:900px;width:100%;display:flex;flex-direction:column;align-items:center;gap:20px;text-align:center}
+.pair{display:flex;align-items:center;gap:0}
+.pair .link{width:110px;border-top:2px dashed var(--ink);position:relative}
+.pair .link span{position:absolute;left:50%;top:-14px;transform:translateX(-50%);background:var(--paper);padding:0 8px;font:600 14px var(--mono)}
+.rise{animation:rise .6s both}
+.rise.d1{animation-delay:.15s}.rise.d2{animation-delay:.3s}.rise.d3{animation-delay:.45s}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}}
+.pair .ph:first-child{animation:inL .7s both}
+.pair .ph:last-child{animation:inR .7s both}
+@keyframes inL{from{transform:translateX(-60px);opacity:0}}
+@keyframes inR{from{transform:translateX(60px);opacity:0}}
+.revealed .grid3{width:100%;text-align:left}
+
+/* player */
+.hero{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.ph.cover{position:relative;display:block;width:100%;aspect-ratio:21/8;min-height:320px;max-width:100%;border-radius:0;
+  background:radial-gradient(circle at 78% 35%,rgba(244,230,207,.55),transparent 38%),radial-gradient(circle at 15% 110%,rgba(110,165,215,.65),transparent 55%),linear-gradient(120deg,var(--navy),#2a5580)}
+.cover-ui{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;gap:12px;padding:32px;color:#fff;background:linear-gradient(to right,rgba(22,38,58,.75),rgba(22,38,58,.25) 60%,transparent)}
+.cover-ui .eyebrow,.cover-ui .muted{color:rgba(255,255,255,.78)}
+.cover-ui h2{font-size:40px;max-width:16ch}
+.cover-ui .btn.primary{background:#fff;color:var(--navy);border-color:#fff}
+.cover-ui .btn.primary:hover{background:var(--sand);border-color:var(--sand)}
+.cover-ui .btn:not(.primary){background:transparent;color:#fff;border-color:rgba(255,255,255,.5)}
+.wave{position:absolute;right:32px;top:32px;display:flex;gap:4px;align-items:flex-end;height:44px}
+.wave i{width:4px;border-radius:2px;background:rgba(255,255,255,.85);height:var(--h);transform-origin:bottom;animation:wv 1s ease-in-out infinite alternate;animation-play-state:paused}
+.is-playing .wave i{animation-play-state:running}
+@keyframes wv{to{transform:scaleY(.25)}}
+.player{display:grid;grid-template-columns:auto auto auto auto minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:14px 18px}
+.pbtn{border:1.5px solid var(--line);background:var(--card);border-radius:6px;height:36px;min-width:36px;padding:0 8px;display:inline-flex;align-items:center;justify-content:center;gap:4px;font:500 12px var(--mono)}
+.pbtn:hover{border-color:var(--ink)}
+.pbtn.big{width:48px;height:48px;border-radius:50%;border-color:var(--ink);background:var(--ink);color:#fff}
+.scrub{position:relative;height:28px;display:flex;align-items:center;cursor:pointer;touch-action:none}
+.track{position:relative;height:6px;width:100%;background:var(--fill);border-radius:3px}
+.fill{position:absolute;left:0;top:0;bottom:0;background:var(--ink);border-radius:3px}
+.mark{position:absolute;top:-3px;width:2px;height:12px;background:var(--ink3)}
+.knob{position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;background:var(--card);border:2px solid var(--ink);border-radius:50%}
+.tip{position:absolute;bottom:30px;transform:translateX(-50%);background:var(--ink);color:#fff;font:500 11px var(--mono);padding:3px 6px;border-radius:4px;white-space:nowrap;pointer-events:none;display:none}
+.scrub:hover .tip{display:block}
+.pmeta{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:0 18px 14px;font-size:13px;color:var(--ink2)}
+.ep-info{display:flex;flex-direction:column;gap:6px;max-width:68ch}
+.chapters{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.chapters button{width:100%;display:grid;grid-template-columns:64px 1fr;gap:12px;text-align:left;border:0;border-top:1.5px solid var(--fill);background:none;padding:10px 4px}
+.chapters li:first-child button{border-top:0}
+.chapters button:hover{background:var(--fill)}
+.chapters button.on{font-weight:600;color:var(--accent)}
+
+/* match */
+.hm-head{display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+.trait{display:grid;grid-template-columns:120px minmax(0,1fr) 120px;gap:12px;align-items:center;font-size:13px}
+.trait .axis{position:relative;height:2px;background:var(--line)}
+.trait .axis span{position:absolute;top:-6px;width:14px;height:14px;margin-left:-7px;border-radius:50%;border:2px solid var(--ink);background:var(--card)}
+.trait .axis span.hm{background:var(--ink)}
+.trait .r{text-align:right}
+.legend{display:flex;gap:16px;font-size:12px;color:var(--ink2)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;border:2px solid var(--ink);margin-right:6px;vertical-align:-1px}
+.legend i.hm{background:var(--ink)}
+.career{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.career li{display:grid;grid-template-columns:96px 1fr;gap:12px;font-size:14px}
+blockquote{margin:0;border-left:3px solid var(--ink);padding:4px 0 4px 14px;font-size:17px}
+
+/* interviews */
+.iv{display:grid;grid-template-columns:48px minmax(0,1fr);gap:16px}
+.iv .num{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--ink);display:grid;place-items:center;font:600 15px var(--mono)}
+.iv.locked{opacity:.5}
+.iv.done .num{background:var(--ok);border-color:var(--ok);color:#fff}
+.slots{display:flex;flex-wrap:wrap;gap:8px}
+.slot{border:1.5px solid var(--line);background:var(--card);border-radius:6px;padding:8px 12px;font-size:14px}
+.slot.on{border-color:var(--ink);background:var(--ink);color:#fff}
+.booked{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1.5px dashed var(--line);border-radius:6px;padding:10px 14px}
+
+/* call */
+.callwrap{height:100%;display:flex;flex-direction:column}
+.call-top{display:flex;align-items:center;gap:14px;padding:12px max(16px,env(safe-area-inset-right,0px)) 12px max(16px,env(safe-area-inset-left,0px));border-bottom:1.5px solid var(--line);background:var(--card);flex-wrap:wrap}
+.live-dot{display:inline-flex;align-items:center;gap:6px;font:500 12px var(--mono);color:var(--bad)}
+.live-dot::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--bad);animation:pulse2 1.4s infinite}
+@keyframes pulse2{50%{opacity:.3}}
+.stage{flex:1;position:relative;margin:16px max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px));border:0;border-radius:var(--r);background:radial-gradient(circle at 50% 40%,#2c5179,var(--navy) 72%);display:grid;place-items:center;min-height:300px;overflow:hidden}
+.stage .who{position:absolute;left:16px;bottom:14px;color:#fff;font-size:14px;background:rgba(0,0,0,.45);padding:4px 10px;border-radius:4px}
+.speaking{box-shadow:0 0 0 4px rgba(255,255,255,.18);animation:spk 1.6s ease-in-out infinite}
+@keyframes spk{50%{box-shadow:0 0 0 10px rgba(255,255,255,.06)}}
+.caption{position:absolute;left:50%;bottom:56px;transform:translateX(-50%);max-width:80%;background:rgba(0,0,0,.7);color:#fff;padding:6px 12px;border-radius:4px;font-size:15px;text-align:center}
+.pip{position:absolute;right:16px;bottom:16px;width:180px;aspect-ratio:4/3;max-width:40%;border:2px solid rgba(255,255,255,.8);border-radius:10px;background:#2a5580;display:grid;place-items:center;color:#fff;font-size:12px}
+.controls{display:flex;justify-content:center;gap:12px;padding:16px;flex-wrap:wrap}
+.ctl{border:1.5px solid var(--ink);background:var(--card);border-radius:999px;padding:10px 18px;font-weight:500}
+.ctl.off{background:var(--fill);color:var(--bad);border-color:var(--bad)}
+.waitroom{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:24px;align-items:start}
+.selfview{aspect-ratio:16/10;max-width:100%;border:0;border-radius:var(--r);background:radial-gradient(circle at 50% 40%,#2c5179,var(--navy) 72%);display:grid;place-items:center;position:relative;color:#fff}
+
+/* status */
+.tl{list-style:none;margin:0;padding:0}
+.tl li{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:14px;padding-bottom:22px;position:relative}
+.tl li::before{content:"";position:absolute;left:15px;top:30px;bottom:0;border-left:1.5px dashed var(--line)}
+.tl li:last-child::before{display:none}
+.tl .m{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font:500 12px var(--mono);color:var(--ink3);background:var(--card)}
+.tl li.done .m{background:var(--ink);border-color:var(--ink);color:#fff}
+.tl li.done::before{border-left-style:solid;border-color:var(--ink)}
+.tl li.now .m{border-color:var(--accent);color:var(--accent);border-width:2px}
+.tl li.todo h3{color:var(--ink3)}
+.tl .date{font:500 12px var(--mono);color:var(--ink2)}
+
+/* demo shortcut (sidebar footer, deliberately quiet) */
+.demo{border-top:1.5px dashed var(--line);padding-top:12px;display:flex;flex-direction:column;gap:4px}
+.demo .eyebrow{color:var(--ink3)}
+.linkbtn{border:0;background:none;padding:2px 0;text-align:left;font-size:12px;color:var(--ink2);text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+.linkbtn:hover{color:var(--ink);text-decoration-color:var(--ink)}
+.linkbtn:disabled{color:var(--ink3);text-decoration:none;cursor:default}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:8px;font-size:14px;z-index:60;max-width:calc(100vw - 32px)}
+
+@media (max-width:760px){
+  .shell,.shell.collapsed{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
+  .sb{border-right:0;border-bottom:1.5px solid var(--line)}
+  .sb-in{width:auto;height:auto;padding:12px 16px;gap:10px}
+  .me,.sb-prog,.demo{display:none}
+  .welcome{grid-template-columns:minmax(0,1fr)}
+  .invite h1{font-size:34px}
+  .cover-ui h2{font-size:26px}
+  .nav{flex-direction:row;overflow-x:auto}
+  .nav-i{grid-template-columns:auto auto;white-space:nowrap}
+  .nav-i .sub,.nav-i .badge{display:none}
+  .shell.collapsed .sb{display:none}
+  .prof,.waitroom{grid-template-columns:minmax(0,1fr)}
+  .player{grid-template-columns:auto auto auto minmax(0,1fr) auto}
+  .player .p-cur,.player .p-rem{display:none}
+  .cover{aspect-ratio:4/3}
+  .trait{grid-template-columns:80px minmax(0,1fr) 80px}
 }
-:root[data-theme="dark"]{
-  --bg:#16171a; --panel:#1f2024; --ink:#ececee; --muted:#a3a3a8; --line:#34353a;
-  --accent:#6cc2b9; --accent-soft:#1f3633; --done:#6fcf97; --locked:#55565c; --warn:#e0b25c;
-}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
-button{font:inherit;cursor:pointer}
-.top{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line)}
-.bar{max-width:1100px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-.logo{font-weight:700;letter-spacing:.02em}
-.ptitle{font-size:15px;font-weight:500;color:var(--muted);margin:0;padding-left:14px;border-left:1px solid var(--line)}
-.status{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px}
-.pill{border:1px solid var(--line);border-radius:999px;padding:4px 10px;white-space:nowrap}
-.pill strong{color:var(--accent)}
-.pill.private{background:var(--accent-soft);border-color:transparent}
-.rail{max-width:1100px;margin:0 auto;padding:8px 24px 18px;display:grid;grid-template-columns:repeat(6,1fr);position:relative}
-.rail::before{content:"";position:absolute;left:calc(24px + 100%/12 - 4px);right:calc(24px + 100%/12 - 4px);top:25px;height:3px;background:var(--line)}
-.fill{position:absolute;left:calc(24px + (100% - 48px)/12);top:25px;height:3px;background:var(--done);transition:width .4s}
-.stop{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;background:none;border:0;color:var(--muted);padding:0 4px;text-align:center}
-.dot{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--panel);border:2px solid var(--locked);font-size:14px;font-weight:600;transition:.2s}
-.stop .lbl{font-size:12.5px;line-height:1.25}
-.stop.done .dot{border-color:var(--done);background:var(--done);color:#fff}
-.stop.done{color:var(--ink);cursor:pointer}
-.stop .bk{display:none}
-.stop.done:hover .dot,.stop.done:focus-visible .dot{box-shadow:0 0 0 5px color-mix(in srgb,var(--done) 25%,transparent);transform:scale(1.08)}
-.stop.done:hover .ck,.stop.done:focus-visible .ck{display:none}
-.stop.done:hover .bk,.stop.done:focus-visible .bk{display:inline}
-.stop.done:hover .lbl{text-decoration:underline;text-underline-offset:3px}
-.railhint{max-width:1100px;margin:-10px auto 0;padding:0 24px 10px;text-align:center;font-size:12.5px;color:var(--muted)}
-.btnback{background:var(--panel);color:var(--ink);border:1px solid var(--ink);border-radius:10px;padding:10px 16px;font-weight:600}
-.btnback:hover{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
-.stop.current .dot{border-color:var(--accent);background:var(--accent);color:#fff;box-shadow:0 0 0 6px var(--accent-soft)}
-.stop.current{color:var(--ink);font-weight:600}
-.stop.locked{cursor:not-allowed;opacity:.7}
-.stop.viewing .lbl{text-decoration:underline;text-underline-offset:3px}
-main{max-width:860px;margin:28px auto;padding:0 24px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:28px}
-.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 6px}
-h1{font-size:24px;margin:0 0 10px}
-h2{font-size:16px;margin:22px 0 8px}
-p{margin:0 0 12px}
-.muted{color:var(--muted)}
-.btn{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:10px 18px;font-weight:600}
-.btn:disabled{background:var(--locked);cursor:not-allowed}
-.btn.ghost{background:none;color:var(--accent);border:1px solid var(--accent)}
-.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:20px}
-details{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:14px 0}
-summary{cursor:pointer;font-weight:600;color:var(--accent)}
-details ul{margin:10px 0 0;padding-left:20px}
-details li{margin-bottom:6px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
-input,textarea{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px}
-textarea{min-height:70px;resize:vertical}
-.person{display:flex;gap:16px;align-items:center}
-.avatar{width:64px;height:64px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:700;font-size:20px;flex:none}
-.player{border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:12px}
-.track{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin:12px 0 6px}
-.track div{height:100%;width:0;background:var(--accent);transition:width .2s linear}
-.times{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
-.chapters{list-style:none;padding:0;margin:12px 0 0}
-.chapters li{display:flex;gap:10px;padding:6px 0;border-top:1px solid var(--line);font-size:14px}
-.chapters li span:first-child{color:var(--muted);width:44px;flex:none}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.seg button{background:none;border:0;padding:7px 12px;color:var(--ink)}
-.seg button.on{background:var(--accent);color:#fff}
-.calwrap{display:grid;grid-template-columns:320px 1fr;gap:24px;margin-top:8px}
-.cal{border:1px solid var(--line);border-radius:12px;padding:14px}
-.calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.caltitle{font-weight:600;margin:0}
-.navb{background:none;border:1px solid var(--line);border-radius:8px;width:32px;height:32px;color:var(--ink);font-size:18px}
-.calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
-.dow{font-size:11px;color:var(--muted);padding:4px 0}
-.day{aspect-ratio:1;border:0;border-radius:8px;background:none;color:var(--locked);font-size:14px}
-.day.avail{background:var(--accent-soft);color:var(--accent);font-weight:600}
-.day.avail:hover{outline:2px solid var(--accent)}
-.day.sel{background:var(--accent);color:#fff}
-.day.today{box-shadow:inset 0 0 0 1px var(--muted)}
-.day:disabled{cursor:default}
-.legend{display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--accent-soft);border:1px solid var(--accent);vertical-align:-1px}
-.timepanel .slots{grid-template-columns:repeat(2,1fr);margin-top:0;align-content:start}
-.timepanel .slot{text-align:center}
-.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
-.slot{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;text-align:left;color:var(--ink)}
-.slot.on{border-color:var(--accent);background:var(--accent-soft);font-weight:600}
-.booked{border:1px dashed var(--accent);border-radius:12px;padding:14px 16px;margin-top:16px;background:var(--accent-soft)}
-.demo{background:none;border:1px dashed var(--muted);color:var(--muted);border-radius:8px;padding:6px 10px;font-size:12.5px}
-.room{background:#111;border-radius:14px;padding:14px;margin-top:6px}
-.tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.tile{aspect-ratio:16/10;background:#2a2b2f;border-radius:10px;position:relative;display:grid;place-items:center;color:#ddd;overflow:hidden}
-.tile video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
-.tile .big{width:72px;height:72px;border-radius:50%;background:#3d3f45;display:grid;place-items:center;font-size:24px;font-weight:700}
-.tile .name{position:absolute;left:10px;bottom:8px;font-size:12px;background:rgba(0,0,0,.5);padding:2px 8px;border-radius:6px}
-.controls{display:flex;justify-content:center;gap:10px;margin-top:12px}
-.controls button{border:0;border-radius:999px;padding:8px 14px;background:#3d3f45;color:#fff;font-size:13px}
-.controls .end{background:#c0392b}
-.note{font-size:13px;color:var(--muted);margin-top:10px}
-.recap{list-style:none;padding:0;margin:16px 0 0}
-.recap li{padding:8px 0;border-top:1px solid var(--line);display:flex;gap:10px}
-.recap li::before{content:"✓";color:var(--done);font-weight:700}
-.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);opacity:0;background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:10px;font-size:14px;transition:.25s;pointer-events:none;z-index:10}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-.toast.act.show{pointer-events:auto}
-.tact{margin-left:14px;background:none;border:0;color:var(--accent-soft);font-weight:700;text-decoration:underline;text-underline-offset:3px;padding:0}
-.navrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
-.backb{background:none;border:1px solid var(--line);border-radius:8px;padding:6px 12px;color:var(--ink);font-size:13.5px}
-.backb:hover{border-color:var(--accent);color:var(--accent)}
-.navrow .revisit{margin:0;flex:1}
-.linkb{background:none;border:0;color:var(--accent);text-decoration:underline;text-underline-offset:3px;padding:0;font-size:13.5px}
-.leaveq{display:flex;justify-content:center;align-items:center;gap:10px;margin-top:12px;color:#fff;font-size:14px}
-.revisit{font-size:13px;background:var(--accent-soft);border-radius:8px;padding:8px 12px;margin-bottom:14px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
-</head>
-<body>
-<div class="top">
-  <div class="bar">
-    <span class="logo">Katalyzr</span><h1 class="ptitle">Journey rail</h1>
-    <div class="status">
-      <span class="pill">Interviews: <strong id="ivCount">0 of 2</strong></span>
-      <span class="pill" id="timeLeft"></span>
-      <span class="pill private">🔒 Private: visible only to you and CSG</span>
-    </div>
-  </div>
-  <nav class="rail" id="rail" aria-label="Your hiring journey"><div class="fill" id="fill"></div></nav>
-  <div class="railhint" id="railhint"></div>
-</div>
-<main id="main"></main>
-<div class="toast" id="toast" role="status"></div>
+
+<div id="app"></div>
+<div id="toast" class="toast" hidden></div>
 
 <script>
-const STOPS = [
-  {key:"invite",  label:"Invite",                 mins:2},
-  {key:"profile", label:"Profile",                mins:3},
-  {key:"match",   label:"Match",                  mins:3},
-  {key:"episode", label:"Intro Episode",          mins:3},
-  {key:"int1",    label:"Interview 1<br>Psychologist at CSG", mins:45},
-  {key:"int2",    label:"Interview 2<br>Hiring manager",      mins:60},
+/* ---------- fake data ---------- */
+const DUR = 3522; // 58:42
+const LINKEDIN = {
+  name:'Jordan Ellis',
+  role:'Senior Operations Lead, Brightline Health',
+  location:'Denver, CO',
+  skills:'Operating cadence design, Cross-functional leadership, Process automation, Data storytelling, Change management',
+  experience:'9 years in operations across logistics and digital health. Scaled Brightline Health\'s operating rhythm from 40 to 400 people and led a 12-state clinic rollout. Before that: fulfillment ops at a regional 3PL.',
+  values:'Candor, Ownership, Calm under pressure, Curiosity',
+  style:'Writes things down first. Prefers short async updates and one deep weekly sync.',
+  personality:'Calm, direct, quietly competitive. Recharges alone, energized by hard problems.',
+  mindset:'I like walking into messy situations and leaving them calmer than I found them. I\'d rather fix the system than be the hero who puts out the fire.'
+};
+const FIELDS = [
+  ['name','Name','input','From LinkedIn'],
+  ['role','Current role','input','From LinkedIn'],
+  ['location','Location','input','From LinkedIn'],
+  ['skills','Key skills','input','From LinkedIn · comma separated'],
+  ['experience','Experience','textarea','From LinkedIn'],
+  ['values','Values','input','Drafted from your LinkedIn posts'],
+  ['style','Working style','textarea','Drafted from your LinkedIn posts'],
+  ['personality','Personality','textarea','Drafted from your LinkedIn posts'],
+  ['mindset','Mindset','textarea','Drafted from your LinkedIn posts'],
 ];
-const DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const MONTH_FULL=["January","February","March","April","May","June","July","August","September","October","November","December"];
-const TODAY=new Date(2026,9,21);
-const key=d=>d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
-const fromKey=k=>{const [y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d);};
-const label=d=>DOW[d.getDay()]+", "+MON[d.getMonth()]+" "+d.getDate();
-// Open times for a given interview and date ([] = unavailable)
-function openTimes(n,d){
-  const wd=d.getDay(); if(wd===0||wd===6||d<=TODAY) return [];
-  if(n===1){
-    const start=new Date(2026,9,26), end=new Date(2026,10,13);
-    if(d<start||d>end||[30].includes(d.getDate())&&d.getMonth()===9||key(d)==="2026-11-11") return [];
-    const base=["9:30 AM","11:00 AM","1:30 PM","4:00 PM"]; base.splice(d.getDate()%4,1); return base;
-  } else {
-    const b=S.int[1].date?fromKey(S.int[1].date):new Date(2026,9,28);
-    const start=new Date(b.getFullYear(),b.getMonth(),b.getDate()+3), end=new Date(2026,10,25);
-    if(d<start||d>end||key(d)==="2026-11-11") return [];
-    const base=["10:00 AM","2:00 PM","3:30 PM"]; base.splice(d.getDate()%3,1); return base;
-  }
-}
-
-const S = {
-  reached:0, viewing:0, finished:false, interviews:0,
-  profile:{name:"Jordan Reyes", role:"Senior Product Designer", skills:"Service design, research synthesis, design systems", motivation:"Building products that make complicated systems feel human."},
-  profileAI:null,
-  episodeStarted:false, mode:"highlight", pos:0, playing:false, timer:null,
-  int:{1:{slot:null,date:null,time:null,month:null,booked:false,open:false,inRoom:false,done:false},2:{slot:null,date:null,time:null,month:null,booked:false,open:false,inRoom:false,done:false}},
-  stream:null
+const HM = {
+  name:'Daniel Reyes', title:'VP, Operations', company:'Northwind Labs',
+  companyLine:'Climate-logistics company · Series C · 280 people', location:'Austin, TX · Hybrid',
+  about:'Daniel started on a warehouse floor and has run operations at three logistics companies. At Northwind he owns planning, fulfillment and the internal tools that tie them together.',
+  hiring:'Head of Operating Systems: the person who designs how Northwind plans, decides and ships as it doubles in size.',
+  quote:'I don\'t need someone who has done this job. I need someone who gets curious when things break.',
+  career:[['2021 – now','VP, Operations · Northwind Labs'],['2016 – 2021','Director of Fulfillment Ops · Parcelwise'],['2011 – 2016','Site lead → Regional ops manager · Meridian Freight']],
+  skills:['Operating cadence design','Cross-functional leadership','Process automation','Change management','Network planning'],
+  values:['Candor','Ownership','Calm under pressure','Long-term thinking'],
+  fit:92
+};
+const SHARED_SKILLS = ['Operating cadence design','Cross-functional leadership','Process automation','Change management'];
+const SHARED_VALUES = ['Candor','Ownership','Calm under pressure'];
+const TRAITS = [ // [left label, right label, you 0-100, Daniel 0-100]
+  ['Recharges alone','Recharges with people',34,42],
+  ['Improvises','Plans ahead',70,76],
+  ['Detail first','Big picture first',62,66],
+  ['Moves fast','Moves deliberately',48,40],
+];
+const PSY = {name:'Dr. Priya Raman', title:'Talent Psychologist, CSG'};
+const CHAPTERS = [
+  [0,'Cold open'],[130,'From the warehouse floor to VP'],[705,'Why I hire for curiosity over credentials'],
+  [1470,'The operating rhythm at Northwind'],[2165,'What a bad week looks like'],[2840,'The person I\'m looking for'],[3310,'A question for you']
+];
+const IV = {
+  psych:{n:1,title:'Conversation with a CSG psychologist',who:PSY.name,whoLine:PSY.title,len:'30 min',
+    why:'Priya is your go-between. She checks the match from your side, answers questions you might not want to ask Daniel directly, and passes on anything he should know.',
+    slots:['Tue, Oct 27 · 10:00 AM CT','Tue, Oct 27 · 2:30 PM CT','Wed, Oct 28 · 11:00 AM CT','Thu, Oct 29 · 9:30 AM CT'],
+    lines:['Thanks for joining, Jordan. This is a relaxed conversation.','I want to understand how you like to work. This isn\'t a quiz.','What stayed with you from Daniel\'s episode?','Tell me about a time you changed your mind about something important.']},
+  hm:{n:2,title:'Conversation with the hiring manager',who:HM.name,whoLine:HM.title+' · '+HM.company,len:'45 min',
+    why:'You\'ve heard Daniel\'s story. This is your turn. No panel, no case study, just the two of you.',
+    slots:['Mon, Nov 2 · 1:00 PM CT','Tue, Nov 3 · 10:30 AM CT','Wed, Nov 4 · 4:00 PM CT'],
+    lines:['Great to finally meet you after the episode.','Priya told me you like fixing the system, not the fire.','Walk me through how you\'d spend your first 30 days.','What would make you say no to this?']}
 };
 
-const $ = id => document.getElementById(id);
-// toast(message, [actionLabel, actionFn]) — an action (e.g. "Undo") keeps it up longer
-function toast(msg,action,fn){
-  const t=$("toast"); t.innerHTML=""; t.append(msg);
-  if(action){const b=document.createElement("button");b.className="tact";b.textContent=action;
-    b.onclick=()=>{t.classList.remove("show");fn();};t.append(b);}
-  t.classList.toggle("act",!!action); t.classList.add("show");
-  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("show"),action?6000:2400);
+/* ---------- state ---------- */
+function initial(){
+  return {view:'welcome', hist:[], stage:0, matchReady:false, revealOpen:false, sbCollapsed:false,
+    profile:{...LINKEDIN, photo:null},
+    p:{t:0, playing:false, speed:1, heard:false},
+    iv:{psych:{status:'open',slot:null,pick:0}, hm:{status:'locked',slot:null,pick:0}},
+    call:null, callT:0, mic:true, cam:true, cc:true};
 }
-function esc(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
-function fmt(sec){sec=Math.floor(sec);return Math.floor(sec/60)+":"+String(sec%60).padStart(2,"0");}
+let S = initial();
+let stepIdx = 0;
 
-function renderStatus(){
-  $("ivCount").textContent = S.interviews+" of 2";
-  const left = S.finished ? 0 : STOPS.slice(S.reached).reduce((a,s)=>a+s.mins,0);
-  const h=Math.floor(left/60), m=left%60;
-  $("timeLeft").textContent = S.finished ? "Process complete" : "About "+(h?h+" hr ":"")+(m?m+" min":"")+" of your time left";
-}
-
-function renderRail(){
-  const rail=$("rail"); rail.querySelectorAll(".stop").forEach(n=>n.remove());
-  STOPS.forEach((s,i)=>{
-    const done = S.finished || i<S.reached;
-    const current = !S.finished && i===S.reached;
-    const locked = i>S.reached;
-    const b=document.createElement("button");
-    b.className="stop "+(done?"done":current?"current":"locked")+(i===S.viewing&&!S.finished?" viewing":"");
-    b.innerHTML=`<span class="dot">${done?'<span class="ck">✓</span><span class="bk">↩</span>':locked?"🔒":i+1}</span><span class="lbl">${s.label}</span>`;
-    if(done) b.title="Go back to "+s.label.replace("<br>"," – ");
-    b.setAttribute("aria-label",s.label.replace("<br>"," – ")+(done?" (completed)":locked?" (locked)":" (current)"));
-    b.onclick=()=>{ if(locked){toast("Finish the current step to unlock this one.");return;} S.viewing=i; S.finished? showStop(i,true) : render(); };
-    rail.appendChild(b);
-  });
-  $("railhint").innerHTML = S.reached>0||S.finished ? "Tip: click any green <b>✓</b> step to go back to it." : "";
-  const pct = S.finished?1:S.reached/(STOPS.length-1);
-  $("fill").style.width = `calc((100% - 48px) * ${5/6} * ${pct})`;
+function listened(s){ s.p.heard=true; s.stage=Math.max(s.stage,3); }
+function book(s,k){ const iv=s.iv[k]; iv.slot=IV[k].slots[iv.pick||0]; iv.status='scheduled'; }
+function waitRoom(s,k){ if(!s.iv[k].slot) book(s,k); s.iv[k].status='waiting'; s.call=k; s.view='call'; s.sbCollapsed=false; }
+function goLive(s,k){ s.iv[k].status='live'; s.call=k; s.callT=0; s.view='call'; s.sbCollapsed=true; }
+function endCall(s,k){
+  s.iv[k].status='done'; s.call=null; s.sbCollapsed=false;
+  if(k==='psych'){ s.stage=Math.max(s.stage,4); if(s.iv.hm.status==='locked') s.iv.hm.status='open'; s.view='interviews'; }
+  else { s.stage=5; s.view='status'; }
 }
 
-function advance(){
-  stopAudio();
-  if(S.reached<STOPS.length-1){S.reached++; S.viewing=S.reached;}
-  render(); window.scrollTo({top:0,behavior:"smooth"});
+/* Each step is one move through the core flow. Next applies the following step with dummy data. */
+const STEPS = [
+  ['welcome','Welcome screen', s=>{s.view='welcome'}],
+  ['accept','Accept the invitation', s=>{s.view='profile'}],
+  ['confirm','Confirm the LinkedIn profile', s=>{s.stage=Math.max(s.stage,1); s.view='home'}],
+  ['matched','Match is ready', s=>{s.matchReady=true; s.revealOpen=false; s.view='reveal'}],
+  ['open','Open the match card', s=>{s.matchReady=true; s.revealOpen=true; s.view='reveal'}],
+  ['toHome','Go to the introduction', s=>{s.stage=Math.max(s.stage,2); s.view='home'}],
+  ['play','Play the episode', s=>{s.view='intro'; s.p.playing=true}],
+  ['pause','Leave partway (shows resume)', s=>{s.p.t=1394; s.p.playing=false; s.view='home'}],
+  ['finish','Finish the episode', s=>{s.p.t=DUR; s.p.playing=false; listened(s); s.view='home'}],
+  ['ivs','Open Interviews', s=>{s.view='interviews'}],
+  ['bookPsych','Book the psychologist', s=>{s.view='interviews'; book(s,'psych')}],
+  ['psychWait','Enter the waiting room', s=>waitRoom(s,'psych')],
+  ['psychLive','Join the call', s=>goLive(s,'psych')],
+  ['psychEnd','End the call', s=>endCall(s,'psych')],
+  ['bookHm','Book the hiring manager', s=>{s.view='interviews'; book(s,'hm')}],
+  ['hmWait','Enter the waiting room', s=>waitRoom(s,'hm')],
+  ['hmLive','Join the call', s=>goLive(s,'hm')],
+  ['hmEnd','End the call', s=>endCall(s,'hm')],
+];
+const stepNo = id => STEPS.findIndex(x=>x[0]===id);
+
+function runStep(i){
+  if(i<0||i>=STEPS.length) return;
+  const before=S.view;
+  STEPS[i][2](S);
+  if(S.view!==before) S.hist.push(before);
+  stepIdx=i;
+  render();
 }
 
-function render(){renderStatus();renderRail();showStop(S.viewing,false);}
-
-// Escape route shown above every step: Back to the previous stop, plus a way back to where you were
-function nav(i){
-  const back = "";
-  let note="";
-  if(S.finished) note=`<div class="revisit">Looking back at a completed step. <button class="demo" onclick="S.viewing=-1;showDone();renderRail()">Back to summary →</button></div>`;
-  else if(i<S.reached) note=`<div class="revisit">You're revisiting a completed step. Changes here are saved. <button class="demo" onclick="S.viewing=S.reached;render()">Back to current step →</button></div>`;
-  return (back||note) ? `<div class="navrow">${back}${note}</div>` : "";
+/* ---------- helpers ---------- */
+const esc = v => String(v??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = t => { t=Math.max(0,Math.floor(t)); return Math.floor(t/60)+':'+String(t%60).padStart(2,'0'); };
+const first = n => String(n||'').trim().split(/\s+/)[0] || 'there';
+function ph(w,h,label,{round=false,img=null,cls='',init=''}={}){
+  const inner = img ? `<img src="${img}" alt="">` : init ? `<span class="ini" style="font-size:${Math.round(Math.min(w,h)*.36)}px">${esc(init)}</span>` : '';
+  return `<div class="ph ${round?'round':''} ${cls}" style="width:${w}px;height:${h}px;max-width:100%">${inner}${label&&!round&&!img?`<span class="ph-l">${esc(label)}</span>`:''}</div>`;
 }
-// Puts a "← Back" button at the start of the card's main action row
-function addCardBack(i){
-  if(i<=0) return;
-  const rows=$("main").querySelectorAll(".card > .row"); const row=rows[rows.length-1]; if(!row) return;
-  const b=document.createElement("button"); b.className="btnback"; b.textContent="← Back";
-  b.title="Go back to "+STOPS[i-1].label.replace("<br>"," – "); b.onclick=()=>goBack(i);
-  row.prepend(b);
+const ini = n => String(n||'').trim().split(/\s+/).map(x=>x[0]||'').slice(0,2).join('').toUpperCase();
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.hidden=false;
+  clearTimeout(toast.h); toast.h=setTimeout(()=>t.hidden=true,2600);
 }
-function goBack(i){ stopAudio(); S.viewing=i-1; if(S.finished){renderRail();showStop(i-1,true);} else render(); window.scrollTo({top:0,behavior:"smooth"}); }
-const revisitNote = nav;
+function nav(v){
+  if(v===S.view){ render(); return; }
+  S.hist.push(S.view); S.view=v; render();
+}
+function back(){
+  if(S.view==='call'){ const k=S.call; if(S.iv[k].status==='live'||S.iv[k].status==='waiting') S.iv[k].status='scheduled'; S.call=null; S.sbCollapsed=false; }
+  S.view = S.hist.pop() || 'home';
+  if(S.view==='call' && !S.call) S.view='interviews';
+  render();
+}
+const backBtn = () => `<button class="back" data-act="back">← Back</button>`;
+function head(eyebrow,title,sub){
+  return `<div class="pagehead">${backBtn()}<p class="eyebrow">${eyebrow}</p><h1>${title}</h1>${sub?`<p class="muted">${sub}</p>`:''}</div>`;
+}
 
-function showStop(i,fromDone){
-  const m=$("main"), k=STOPS[i].key;
-  if(S.finished && !fromDone){ return showDone(); }
-  let h = nav(i);
-  const isPast = i<S.reached || S.finished;
-
-  if(k==="invite"){
-    h+=`<div class="card"><p class="eyebrow">Step 1 of 6 · Invitation</p>
-    <h1>Jordan, you've been personally invited to Katalyzr.</h1>
-    <p>CSG works with a small number of hiring managers who are looking for people like you, people who are great at their work <em>and</em> driven by why they do it. Katalyzr is invite-only. There are no job boards, no résumé stack, and no public profile.</p>
-    <p>If you accept, your whole process is <strong>two conversations</strong>: one with a psychologist at CSG and one with a hiring manager you've been matched with.</p>
-    <details open><summary>How did you find me?</summary><ul>
-      <li>We found you through your <strong>public LinkedIn profile</strong>, using only what LinkedIn's terms of service allow.</li>
-      <li>We used your title, skills, and experience to start a profile for you. You can review and edit every field on the next step.</li>
-      <li>Nothing here is public. Only you and CSG can see your information, and you can decline at any time.</li>
-    </ul></details>
-    <div class="row">${isPast?`<span class="muted">✓ Invite accepted</span>`:`<button class="btn" id="accept">Accept invite</button><button class="btn ghost" onclick="toast('No problem. Your data will be deleted and you won\\'t hear from us again.')">Not for me</button>`}</div></div>`;
-    m.innerHTML=h; if($("accept")) $("accept").onclick=()=>{advance();toast("Invite accepted. Welcome to Katalyzr.","Undo",()=>{S.reached=0;S.viewing=0;render();toast("Invite not accepted yet. Take your time.");});};
-  }
-
-  if(k==="profile"){
-    const p=S.profile;
-    h+=`<div class="card"><p class="eyebrow">Step 2 of 6 · Your profile</p>
-    <h1>Does this sound like you?</h1>
-    <p class="muted">We filled this in from your public LinkedIn. Change anything that's off. This is what the matching uses, along with what motivates you.</p>
-    ${JSON.stringify(p)!==JSON.stringify(S.profileAI)?`<p style="font-size:13.5px">You've edited this profile. <button class="linkb" id="resetAI">Reset to what we filled in</button></p>`:""}
-    <div class="grid2" style="margin-top:16px">
-      <div><label for="f1">Name</label><input id="f1" value="${esc(p.name)}"></div>
-      <div><label for="f2">Current role</label><input id="f2" value="${esc(p.role)}"></div>
+/* ---------- sidebar ---------- */
+const NAV = [
+  ['home','Home'],['profile','My Profile'],['match','My Match'],['intro','Introduction','Podcast'],['interviews','Interviews'],['status','Status']
+];
+function unlocked(v){
+  if(v==='match'||v==='intro') return S.stage>=2;
+  if(v==='interviews') return S.stage>=3;
+  return true;
+}
+function lockHint(v){
+  return v==='interviews' ? 'Interviews unlock after you listen to the episode.' : 'This unlocks when you\'re matched.';
+}
+function navState(v){
+  if(!unlocked(v)) return `<span class="badge">🔒</span>`;
+  const done = (v==='profile'&&S.stage>=1)||(v==='match'&&S.stage>=2)||(v==='intro'&&S.p.heard)||(v==='interviews'&&S.stage>=5);
+  if(done) return `<span class="done">✓</span>`;
+  if(v==='interviews') return `<span class="badge">${S.stage>=4?1:0}/2</span>`;
+  return '';
+}
+const ICON = {home:'⌂',profile:'◐',match:'✦',intro:'▶',interviews:'◫',status:'⚑'};
+function sidebar(){
+  const p=S.profile; const pct=Math.round(S.stage/5*100);
+  const active = S.view==='call' ? 'interviews' : S.view;
+  return `<aside class="sb" aria-label="Sections"><div class="sb-in">
+    <div class="logo">KATALYZR</div>
+    <div class="me">${ph(40,40,'',{round:true,img:p.photo,init:ini(p.name)})}<div><b>${esc(p.name)}</b><span class="small muted">Invited by CSG</span></div></div>
+    <nav class="nav">${NAV.map(([v,l,sub])=>`
+      <button class="nav-i ${active===v?'on':''} ${unlocked(v)?'':'locked'}" data-act="nav" data-v="${v}" ${active===v?'aria-current="page"':''}>
+        <span aria-hidden="true">${ICON[v]}</span><span>${l}${sub?`<span class="sub">${sub}</span>`:''}</span>${navState(v)}
+      </button>`).join('')}</nav>
+    <div class="sb-prog">
+      <p class="eyebrow">Your progress</p>
+      <div class="bar"><i style="width:${pct}%"></i></div>
+      <p class="small muted">${['Invited','Profile confirmed','Matched','Episode listened','1 of 2 interviews done','Both interviews done'][S.stage]}</p>
     </div>
-    <div style="margin-top:14px"><label for="f3">Top skills</label><input id="f3" value="${esc(p.skills)}"></div>
-    <div style="margin-top:14px"><label for="f4">What motivates you at work? (in your words)</label><textarea id="f4">${esc(p.motivation)}</textarea></div>
-    <div class="row"><button class="btn" id="conf">${isPast?"Save changes":"Confirm profile"}</button><span class="muted" style="font-size:13px">🔒 Never shared outside Katalyzr</span></div></div>`;
-    m.innerHTML=h; addCardBack(i);
-    $("conf").onclick=()=>{
-      const prev={...S.profile};
-      S.profile={name:$("f1").value,role:$("f2").value,skills:$("f3").value,motivation:$("f4").value};
-      const undo=()=>{S.profile=prev;S.viewing=1;render();toast("Changes undone. You're back on your profile.");};
-      if(isPast){toast("Profile updated.","Undo",undo);showStop(i,fromDone);} else {advance();toast("Profile confirmed.","Undo",undo);}
-    };
-    if($("resetAI")) $("resetAI").onclick=()=>{const prev={...S.profile};S.profile={...S.profileAI};showStop(i,fromDone);
-      toast("Reset to the filled-in version. Save to keep it.","Undo",()=>{S.profile=prev;showStop(i,fromDone);});};
-  }
+    ${demoLinks()}
+  </div></aside>`;
+}
 
-  if(k==="match"){
-    h+=`<div class="card"><p class="eyebrow">Step 3 of 6 · Your match</p>
-    <h1>You've been matched with one hiring manager.</h1>
-    <div class="person" style="margin-top:16px"><div class="avatar">DW</div>
-      <div><strong style="font-size:18px">Dana Whitfield</strong><br><span class="muted">VP of Product · Meridian Health · Chicago (hybrid)</span><br><span style="font-size:14px">Role: Principal Product Designer, Care Experience</span></div></div>
-    <details id="why"><summary>Why you were paired</summary><ul>
-      <li><strong>Shared motivation:</strong> You both describe the goal of your work as making complicated systems feel human. Dana talks about this a lot on her podcast episode.</li>
-      <li><strong>Skills she needs:</strong> Her team is rebuilding patient scheduling and needs someone strong in service design and research synthesis. Those are your top two skills.</li>
-      <li><strong>How you like to work:</strong> You both prefer small teams, direct feedback, and time to think before deciding.</li>
-    </ul><p class="note">Matching does not use age, gender, race, or other demographic factors, and it doesn't reward simply being similar to the hiring manager. Dana sees these same three reasons, nothing more.</p></details>
-    <div class="row">${isPast?`<span class="muted">✓ Match viewed</span>`:`<button class="btn" id="go">Continue to intro episode</button>`}</div></div>`;
-    m.innerHTML=h; addCardBack(i);
-    $("why").addEventListener("toggle",e=>{ if(e.target.open) toast("Showing why you were paired."); });
-    if($("go")) $("go").onclick=()=>advance();
-  }
+/* ---------- views ---------- */
+function vWelcome(){
+  return `<div class="welcome"><div class="w-left"><div class="invite">
+    <div class="logo">KATALYZR</div>
+    <p class="eyebrow">Private invitation · Culminate Strategy Group</p>
+    <h1>${esc(first(S.profile.name))}, we'd like to introduce you to someone.</h1>
+    <p class="muted">Alex Morgan at CSG came across your work on LinkedIn. Katalyzr is invite-only. There's no job board and no rounds of screening. We match you with one hiring manager who thinks the way you do, then get out of the way.</p>
+    <ol class="how">
+      <li><span class="n">1</span><span><b>Check your profile</b><span class="muted small">We've filled it in from LinkedIn. Fix anything that's off.</span></span></li>
+      <li><span class="n">2</span><span><b>Meet your match</b><span class="muted small">Listen to their episode of <i>Uncommon Operator</i>.</span></span></li>
+      <li><span class="n">3</span><span><b class="two">Two interviews. That's it.</b><span class="muted small">One with a CSG psychologist, one with the hiring manager.</span></span></li>
+    </ol>
+    <div class="row"><button class="btn primary" data-act="step" data-v="accept">Accept invitation →</button><span class="small muted mono">Invite KZ-0419 · personal to you</span></div>
+  </div></div>
+  <aside class="w-right">
+    <p class="eyebrow">Why you're here</p>
+    <p class="w-quote">“We don't post jobs. We introduce people who already think alike.”</p>
+    <div class="w-from">${ph(48,48,'',{round:true,init:'AM',cls:'hm'})}<div><b>Alex Morgan</b><span>Partner, Culminate Strategy Group</span></div></div>
+    <div class="w-stats">
+      <div><b>1</b><span>hiring manager, chosen for you</span></div>
+      <div><b>2</b><span>interviews, start to finish</span></div>
+      <div><b>0</b><span>job boards or screening rounds</span></div>
+    </div>
+  </aside></div>`;
+}
 
-  if(k==="episode"){
-    const dur = S.mode==="highlight"?180:3480;
-    h+=`<div class="card"><p class="eyebrow">Step 4 of 6 · Get to know Dana</p>
-    <h1>Hear from Dana before you meet her.</h1>
-    <p class="muted">Dana was a guest on CSG's podcast. Start with a 3-minute highlight, or listen to the full conversation if you want more.</p>
-    <div class="player">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-        <div><strong>Ep. 42 · Dana Whitfield on designing care people can actually use</strong></div>
-        <div class="seg"><button id="mH" class="${S.mode==="highlight"?"on":""}">3-min highlight</button><button id="mF" class="${S.mode==="full"?"on":""}">Full episode (58 min)</button></div>
+function vProfile(){
+  const p=S.profile;
+  return `${head('My Profile','Is this you?','We pulled this from your LinkedIn. Edit anything in plain words. The hiring manager sees exactly this.')}
+  <div class="li-note">in&nbsp; Imported from LinkedIn on Oct 19. Fields marked “drafted” are our best guess from your posts.</div>
+  <div class="prof">
+    <div class="card" style="align-items:flex-start">
+      ${ph(160,160,'',{img:p.photo,init:ini(p.name)})}
+      <span class="btn ghost filebtn small">Replace photo<input type="file" accept="image/*" id="f-photo" aria-label="Replace photo"></span>
+      <p class="small muted">From LinkedIn</p>
+    </div>
+    <div class="card" style="gap:18px">
+      ${FIELDS.map(([k,l,t,src])=>{
+        const ed = p[k]!==LINKEDIN[k];
+        const val=esc(p[k]);
+        return `<div class="field ${ed?'is-edited':''}" data-wrap="${k}">
+          <div class="field-h"><label for="f-${k}">${l}</label><span class="src">${src}</span><span class="edited">· edited</span></div>
+          ${t==='input'?`<input id="f-${k}" data-f="${k}" value="${val}">`:`<textarea id="f-${k}" data-f="${k}" rows="3">${val}</textarea>`}
+        </div>`;}).join('')}
+      <div class="row">
+        ${S.stage<1
+          ? `<button class="btn primary" data-act="step" data-v="confirm">Looks right, find my match →</button><span class="small muted">You can still edit it later.</span>`
+          : `<span class="small muted">✓ Confirmed. Changes save as you type.</span>`}
       </div>
-      <div class="track"><div id="prog"></div></div>
-      <div class="times"><span id="cur">${fmt(S.pos)}</span><span>${fmt(dur)}</span></div>
-      <div class="row" style="margin-top:10px"><button class="btn" id="play">${S.playing?"❚❚ Pause":"▶ Play"}</button><span class="note" style="margin:0">Demo plays sped up.</span></div>
-      <ul class="chapters">${(S.mode==="highlight"
-        ?[["0:00","Why I left consulting for healthcare"],["1:05","What a great first 90 days looks like on my team"],["2:10","The kind of person I want to hire"]]
-        :[["0:00","Intro"],["6:40","Why I left consulting for healthcare"],["21:15","Building a team that disagrees well"],["38:30","What a great first 90 days looks like"],["51:00","The kind of person I want to hire"]]
-      ).map(c=>`<li data-t="${c[0]}"><span>${c[0]}</span><span>${c[1]}</span></li>`).join("")}</ul>
     </div>
-    <div class="row">${isPast?`<span class="muted">✓ Episode started</span>`:`<button class="btn" id="go" ${S.episodeStarted?"":"disabled"}>Continue to Interview 1</button>${S.episodeStarted?"":`<span class="muted" style="font-size:13px">Press play to continue</span>`}`}</div></div>`;
-    m.innerHTML=h; addCardBack(i);
-    const setMode=md=>{stopAudio();S.mode=md;S.pos=0;showStop(i,fromDone);toast(md==="highlight"?"Switched to 3-minute highlight.":"Switched to full episode.");};
-    $("mH").onclick=()=>setMode("highlight"); $("mF").onclick=()=>setMode("full");
-    $("play").onclick=()=>togglePlay(dur,i,fromDone);
-    m.querySelectorAll(".chapters li").forEach(li=>li.onclick=()=>{const [mm,ss]=li.dataset.t.split(":");S.pos=(+mm)*60+(+ss);updProg(dur);toast("Jumped to "+li.dataset.t);});
-    updProg(dur);
-    if($("go")) $("go").onclick=()=>advance();
+  </div>`;
+}
+
+function vHome(){
+  if(S.stage<1) return `${head('Home','Welcome, '+esc(first(S.profile.name)))}
+    <div class="card"><h2>Check your profile to start matching</h2><p class="muted">It's already filled in from LinkedIn. It takes about two minutes.</p><div><button class="btn primary" data-act="nav" data-v="profile">Review my profile →</button></div></div>`;
+  if(!S.matchReady) return `${backBtn()}<div class="wait card">
+      <div class="spin"><b>K</b></div>
+      <p class="eyebrow">Matching in progress</p>
+      <h1>The Katalyzr bot is finding your match.</h1>
+      <p class="muted" style="max-width:52ch">We're looking for one hiring manager who shares your mindset. There's nothing you need to do. We'll email you when it's ready, usually within 2–3 days.</p>
+      <p class="small muted">In this prototype, your match arrives in a few seconds.</p>
+      <ul class="checks">
+        <li class="done"><span class="dot">✓</span>Profile received</li>
+        <li class="now"><span class="dot"></span>Comparing values, working style and personality</li>
+        <li><span class="dot"></span>A person at CSG reviews the match</li>
+        <li><span class="dot"></span>Your match is revealed</li>
+      </ul>
+    </div>`;
+  if(S.stage<2) return `${backBtn()}<div class="wait card">
+      <div class="spin"><b>✦</b></div><h1>Your match is ready.</h1>
+      <button class="btn primary pulse" data-act="nav" data-v="reveal">Open it →</button></div>`;
+  return `${head('Home · Your introduction','Meet '+HM.name.split(' ')[0]+' first.','Listen before you talk. Daniel recorded this episode so you know who you\'d be working with.')}
+    ${hero()}
+    ${epInfo()}
+    <div class="grid2">${matchSummary()}${nextStep()}</div>`;
+}
+
+function hero(){
+  const bars = Array.from({length:28},(_,i)=>`<i style="--h:${10+Math.round(30*Math.abs(Math.sin(i*1.7)))}px;animation-delay:${(i%7)*-.13}s"></i>`).join('');
+  const marks = CHAPTERS.slice(1).map(c=>`<span class="mark" style="left:${c[0]/DUR*100}%"></span>`).join('');
+  return `<section class="hero ${S.p.playing?'is-playing':''}" data-hero>
+    <div class="ph cover">
+      <div class="wave" aria-hidden="true">${bars}</div>
+      <div class="cover-ui">
+        <p class="eyebrow">Uncommon Operator · Episode 47</p>
+        <h2>Building calm inside chaos</h2>
+        <p class="small muted">with ${HM.name} · 58 min</p>
+        <div class="row p-cta">${cta()}</div>
+      </div>
+    </div>
+    <div class="player">
+      <button class="pbtn big p-play" data-act="toggle" aria-label="Play or pause">${S.p.playing?'❚❚':'▶'}</button>
+      <button class="pbtn" data-act="skip" data-v="-15" aria-label="Back 15 seconds">↺15</button>
+      <button class="pbtn" data-act="skip" data-v="30" aria-label="Forward 30 seconds">30↻</button>
+      <span class="mono small p-cur">0:00</span>
+      <div class="scrub" role="slider" tabindex="0" aria-label="Seek" aria-valuemin="0" aria-valuemax="${DUR}">
+        <div class="track"><div class="fill p-fill"></div>${marks}</div><div class="knob p-knob"></div><div class="tip"></div>
+      </div>
+      <span class="mono small p-rem">-58:42</span>
+      <button class="pbtn p-speed" data-act="speed" aria-label="Playback speed">1×</button>
+    </div>
+    <div class="pmeta"><span>Chapter: <b class="p-chap">Cold open</b></span><span class="p-saved">Your place is saved automatically</span></div>
+  </section>`;
+}
+function cta(){
+  const t=S.p.t;
+  if(S.p.playing) return `<button class="btn primary" data-act="toggle">❚❚ Pause</button>`;
+  if(t>0 && t<DUR) return `<button class="btn primary" data-act="toggle">▶ Resume from ${fmt(t)}</button><button class="btn ghost" data-act="restart">Start over</button>`;
+  if(t>=DUR) return `<button class="btn" data-act="restart">▶ Play again</button><span class="small">✓ Listened</span>`;
+  return `<button class="btn primary" data-act="toggle">▶ Play episode</button>`;
+}
+function epInfo(){
+  return `<div class="ep-info">
+    <h2>Building calm inside chaos</h2>
+    <p><b>${HM.name}</b> <span class="muted">· ${HM.title}, ${HM.company}</span></p>
+    <p class="muted">Daniel talks about going from the warehouse floor to VP, why he hires for curiosity over credentials, and what a bad week at Northwind looks like. He closes with a question for whoever he hires next.</p>
+  </div>`;
+}
+function matchSummary(){
+  return `<div class="card">
+    <p class="eyebrow">Your match</p>
+    <div class="row">${ph(48,48,'',{round:true,init:'DR',cls:'hm'})}<div><h3>${HM.name}</h3><p class="small muted">${HM.title} · ${HM.company}</p></div><span class="mono" style="margin-left:auto;font-size:22px;font-weight:600">${HM.fit}%</span></div>
+    <div class="chips">${SHARED_SKILLS.slice(0,3).map(x=>`<span class="chip match">${x}</span>`).join('')}${SHARED_VALUES.slice(0,2).map(x=>`<span class="chip">${x}</span>`).join('')}</div>
+    <div><button class="btn ghost" data-act="nav" data-v="match">Why you were matched →</button></div>
+  </div>`;
+}
+function nextStep(){
+  let t,d,b;
+  const ps=S.iv.psych, hs=S.iv.hm;
+  if(!S.p.heard){ t='Listen to Daniel\'s episode'; d='Interviews unlock once you\'ve heard it. You can stop and pick up where you left off.'; b=`<button class="btn primary" data-act="toggle">${S.p.t>0?'Resume':'Play'} episode</button>`; }
+  else if(ps.status!=='done'){ t=ps.slot?'Your call with Priya':'Book your first interview'; d=ps.slot?ps.slot:'30 minutes with Dr. Priya Raman at CSG. She\'s on your side of the table.'; b=`<button class="btn primary" data-act="nav" data-v="interviews">${ps.slot?'Go to interview':'Pick a time'} →</button>`; }
+  else if(hs.status!=='done'){ t=hs.slot?'Your call with Daniel':'Book your second and last interview'; d=hs.slot?hs.slot:'45 minutes with Daniel. No panel, no case study.'; b=`<button class="btn primary" data-act="nav" data-v="interviews">${hs.slot?'Go to interview':'Pick a time'} →</button>`; }
+  else { t='You\'re done'; d='Both interviews are complete. CSG will be in touch within 48 hours.'; b=`<button class="btn ghost" data-act="nav" data-v="status">See status →</button>`; }
+  return `<div class="card"><p class="eyebrow">Next step</p><h3>${t}</h3><p class="muted small">${d}</p><div>${b}</div></div>`;
+}
+
+function vIntro(){
+  const cur = curChapter();
+  return `${head('Introduction · Podcast','Uncommon Operator','The episode Daniel recorded about how he works and who he\'s looking for.')}
+    ${hero()}
+    ${epInfo()}
+    <div class="grid2">
+      <div class="card"><p class="eyebrow">Chapters</p><ul class="chapters">${CHAPTERS.map((c,i)=>`<li><button data-act="seek" data-v="${c[0]}" class="${i===cur?'on':''}" data-chap="${i}"><span class="mono">${fmt(c[0])}</span><span>${esc(c[1])}</span></button></li>`).join('')}</ul></div>
+      <div class="card"><p class="eyebrow">Think about before your interviews</p>
+        <ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:8px" class="small">
+          <li>Which part of Daniel's “bad week” sounded familiar?</li>
+          <li>Where would you push back on how Northwind runs today?</li>
+          <li>His closing question at 55:10. What's your answer?</li>
+        </ul>
+      </div>
+    </div>`;
+}
+
+function vMatch(){
+  return `${head('My Match','Why you were matched with '+HM.name.split(' ')[0])}
+    <div class="card"><div class="hm-head">${ph(96,96,'',{round:true,init:'DR',cls:'hm'})}
+      <div style="display:flex;flex-direction:column;gap:4px"><h2>${HM.name}</h2><p>${HM.title} · ${HM.company}</p><p class="small muted">${HM.companyLine} · ${HM.location}</p></div>
+      <div style="margin-left:auto;text-align:right"><span class="mono" style="font-size:34px;font-weight:600">${HM.fit}%</span><p class="small muted">overall fit</p></div></div>
+      <blockquote>“${HM.quote}”</blockquote>
+    </div>
+    <h2>Why you were matched</h2>
+    <div class="grid3">
+      <div class="card"><p class="eyebrow">Shared skills · ${SHARED_SKILLS.length}</p><div class="chips">${SHARED_SKILLS.map(x=>`<span class="chip match">${x}</span>`).join('')}</div><p class="small muted">You also bring <b>Data storytelling</b>. Daniel brings <b>Network planning</b>.</p></div>
+      <div class="card"><p class="eyebrow">Matching values · ${SHARED_VALUES.length}</p><div class="chips">${SHARED_VALUES.map(x=>`<span class="chip match">${x}</span>`).join('')}</div><p class="small muted">Daniel also lists <b>Long-term thinking</b>. You also list <b>Curiosity</b>.</p></div>
+      <div class="card"><p class="eyebrow">Personality fit</p><p class="small">You land close to Daniel on 4 of 4 traits. The biggest gap is pace: you move a little faster.</p></div>
+    </div>
+    <div class="card"><div class="row" style="justify-content:space-between"><p class="eyebrow">Personality, side by side</p><div class="legend"><span><i></i>You</span><span><i class="hm"></i>Daniel</span></div></div>
+      ${TRAITS.map(([a,b,y,d])=>`<div class="trait"><span>${a}</span><div class="axis"><span style="left:${y}%"></span><span class="hm" style="left:${d}%"></span></div><span class="r">${b}</span></div>`).join('')}
+    </div>
+    <div class="grid2">
+      <div class="card"><p class="eyebrow">About Daniel</p><p>${HM.about}</p><p class="eyebrow" style="margin-top:6px">Hiring for</p><p>${HM.hiring}</p></div>
+      <div class="card"><p class="eyebrow">Career</p><ul class="career">${HM.career.map(([y,r])=>`<li><span class="mono small muted">${y}</span><span>${r}</span></li>`).join('')}</ul></div>
+    </div>
+    <p class="small muted">Match data is placeholder. Every match is reviewed by a person at CSG before you see it.</p>`;
+}
+
+function vInterviews(){
+  return `${head('Interviews','Two conversations. That\'s the whole process.','Both happen here, by video. Nothing to install.')}
+    ${['psych','hm'].map(k=>ivCard(k)).join('')}`;
+}
+function ivCard(k){
+  const d=IV[k], s=S.iv[k];
+  let body='';
+  if(s.status==='locked') body=`<p class="small muted">🔒 Opens after your conversation with Priya.</p>`;
+  else if(s.status==='open') body=`<p class="small"><b>Pick a time</b></p><div class="slots">${d.slots.map((x,i)=>`<button class="slot ${s.pick===i?'on':''}" data-act="pick" data-k="${k}" data-v="${i}">${x}</button>`).join('')}</div><div><button class="btn primary" data-act="book" data-k="${k}">Book this time</button></div>`;
+  else if(s.status==='done') body=`<div class="booked"><span style="color:var(--ok)">✓</span><span>Completed · ${s.slot}</span></div>`;
+  else body=`<div class="booked"><span>📅</span><b>${s.slot}</b><span class="muted small">· ${d.len} · video in Katalyzr</span></div>
+    <div class="row"><button class="btn primary" data-act="wait" data-k="${k}">Enter waiting room →</button><button class="btn ghost" data-act="rebook" data-k="${k}">Change time</button></div>
+    <p class="small muted">Prototype: the waiting room is open any time.</p>`;
+  return `<div class="card iv ${s.status==='locked'?'locked':''} ${s.status==='done'?'done':''}">
+    <span class="num">${s.status==='done'?'✓':d.n}</span>
+    <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+      <div><p class="eyebrow">Interview ${d.n} of 2 · ${d.len}</p><h2>${d.title}</h2><p class="muted small">with ${d.who}, ${d.whoLine}</p></div>
+      <p class="small">${d.why}</p>${body}
+    </div></div>`;
+}
+
+function vCall(){
+  const k=S.call, d=IV[k], s=S.iv[k];
+  if(s.status==='waiting') return `<div class="wrap">${head('Waiting room · Interview '+d.n+' of 2', esc(d.who)+' will let you in.', s.slot+' · '+d.len)}
+    <div class="waitroom">
+      <div class="selfview">${ph(120,120,'',{round:true,img:S.profile.photo,init:ini(S.profile.name)})}<span class="who" style="position:absolute;left:12px;bottom:10px;background:rgba(0,0,0,.45);padding:3px 8px;border-radius:4px;font-size:13px">You · camera preview (simulated)</span></div>
+      <div class="card">
+        <ul class="checks"><li class="done"><span class="dot">✓</span>Camera works</li><li class="done"><span class="dot">✓</span>Microphone works</li><li class="done"><span class="dot">✓</span>Connection is good</li><li class="now"><span class="dot"></span>Waiting for ${esc(d.who.split(' ').slice(-2).join(' '))}</li></ul>
+        <div class="row"><button class="ctl ${S.mic?'':'off'}" data-act="mic">${S.mic?'Mic on':'Mic off'}</button><button class="ctl ${S.cam?'':'off'}" data-act="cam">${S.cam?'Camera on':'Camera off'}</button></div>
+        <p class="small muted">${d.why}</p>
+        <div><button class="btn primary" data-act="live" data-k="${k}">Join call →</button></div>
+      </div>
+    </div></div>`;
+  const line = d.lines[Math.floor(S.callT/5)%d.lines.length];
+  return `<div class="callwrap">
+    <div class="call-top">
+      <button class="btn ghost" data-act="back">← Leave</button>
+      <button class="btn ghost" data-act="sb" aria-label="Show or hide sidebar">${S.sbCollapsed?'☰ Show sidebar':'⇤ Hide sidebar'}</button>
+      <div><b>${esc(d.who)}</b> <span class="muted small">· ${esc(d.whoLine)}</span></div>
+      <span class="live-dot" style="margin-left:auto">LIVE <span class="call-t mono">${fmt(S.callT)}</span></span>
+      <span class="small muted">Interview ${d.n} of 2 · not recorded</span>
+    </div>
+    <div class="stage">
+      ${ph(160,160,'',{round:true,cls:'speaking'+(k==='hm'?' hm':''),init:ini(d.who.replace('Dr. ',''))})}
+      <span class="who">${esc(d.who)}</span>
+      ${S.cc?`<div class="caption" data-cap>${esc(line)}</div>`:''}
+      <div class="pip">${S.cam?ph(56,56,'',{round:true,img:S.profile.photo,init:ini(S.profile.name)}):'Camera off'}</div>
+    </div>
+    <div class="controls">
+      <button class="ctl ${S.mic?'':'off'}" data-act="mic">${S.mic?'🎙 Mute':'🎙 Unmute'}</button>
+      <button class="ctl ${S.cam?'':'off'}" data-act="cam">${S.cam?'Camera off':'Camera on'}</button>
+      <button class="ctl" data-act="cc">${S.cc?'Hide captions':'Captions'}</button>
+      <button class="btn danger" data-act="end" data-k="${k}">End call</button>
+    </div>
+  </div>`;
+}
+
+function vStatus(){
+  const ps=S.iv.psych, hs=S.iv.hm;
+  const M = [
+    ['Invited','CSG sent your personal invite after finding you on LinkedIn.','Oct 19'],
+    ['Profile complete','You confirmed your LinkedIn profile.','Oct 20'],
+    ['Matched','Katalyzr matched you with '+HM.name+', '+HM.company+'.','Oct 22'],
+    ['Episode listened','You heard Daniel\'s Uncommon Operator episode.','Oct 24'],
+    ['Psychologist interview','30 min with '+PSY.name+', CSG.', ps.slot? ps.slot.split(' · ')[0] : ''],
+    ['Hiring manager interview','45 min with '+HM.name+'.', hs.slot? hs.slot.split(' · ')[0] : ''],
+  ];
+  return `${head('Status','Where you are', S.stage>=5?'That\'s everything. CSG will be in touch within 48 hours.':'Six steps, two interviews. No surprise rounds.')}
+    <div class="card"><ol class="tl">${M.map(([t,d,date],i)=>{
+      const st = i<=S.stage ? 'done' : i===S.stage+1 ? 'now' : 'todo';
+      return `<li class="${st}"><span class="m">${st==='done'?'✓':i+1}</span><div><h3>${t}</h3><p class="small muted">${d}</p>${st==='now'?'<p class="small" style="color:var(--accent);font-weight:600">You are here</p>':''}</div><span class="date">${st==='done'||st==='now'?date:''}</span></li>`;}).join('')}</ol></div>`;
+}
+
+function vReveal(){
+  if(!S.revealOpen) return `<div class="full"><div style="display:flex;flex-direction:column;align-items:center;gap:20px">
+    <div class="seal pulse" role="button" tabindex="0" data-act="openReveal" aria-label="Open your match">
+      <span class="k">K</span><p class="eyebrow">For ${esc(first(S.profile.name))}, from Katalyzr</p><h1>Your match is ready</h1>
+      <p class="muted small">One person, chosen for how you think as much as what you've done.</p>
+      <span class="small" style="text-decoration:underline">Click to open</span>
+    </div>
+    ${backBtn()}
+  </div></div>`;
+  return `<div class="full"><div class="revealed">
+    <div class="pair">${ph(96,96,'',{round:true,img:S.profile.photo,init:ini(S.profile.name)})}<div class="link"><span>${HM.fit}%</span></div>${ph(96,96,'',{round:true,init:'DR',cls:'hm'})}</div>
+    <div class="rise"><p class="eyebrow">You've been matched with</p><h1 style="font-size:44px;margin-top:6px">${HM.name}</h1><p class="muted">${HM.title} · ${HM.company} · ${HM.location}</p></div>
+    <div class="grid3">
+      <div class="card rise d1"><p class="eyebrow">Overlapping skills</p><div class="chips">${SHARED_SKILLS.map(x=>`<span class="chip match">${x}</span>`).join('')}</div></div>
+      <div class="card rise d2"><p class="eyebrow">Matching values</p><div class="chips">${SHARED_VALUES.map(x=>`<span class="chip match">${x}</span>`).join('')}</div></div>
+      <div class="card rise d3"><p class="eyebrow">Personality fit</p><p class="small">Both of you plan ahead, start from the big picture and recharge alone.</p></div>
+    </div>
+    <div class="row rise d3" style="justify-content:center"><button class="btn primary" data-act="step" data-v="toHome">Listen to Daniel's introduction →</button>${backBtn()}</div>
+    <p class="small muted">A person at CSG reviewed this match before you saw it.</p>
+  </div></div>`;
+}
+
+/* ---------- render ---------- */
+const VIEWS = {home:vHome,profile:vProfile,intro:vIntro,match:vMatch,interviews:vInterviews,status:vStatus};
+function render(){
+  const app=document.getElementById('app');
+  const prevMain=app.querySelector('.main'); const keep = prevMain && render.last===S.view ? prevMain.scrollTop : 0;
+  if(S.view==='welcome') app.innerHTML=`<div class="main">${vWelcome()}</div>`;
+  else if(S.view==='reveal') app.innerHTML=`<div class="main">${vReveal()}</div>`;
+  else {
+    const inner = S.view==='call' ? vCall() : `<div class="wrap">${VIEWS[S.view]()}</div>`;
+    app.innerHTML=`<div class="shell ${S.sbCollapsed?'collapsed':''}">${sidebar()}<main class="main">${inner}</main></div>`;
   }
-
-  if(k==="int1"||k==="int2") showInterview(k==="int1"?1:2, h, isPast);
-}
-
-function updProg(dur){const p=$("prog"); if(!p) return; p.style.width=Math.min(100,S.pos/dur*100)+"%"; $("cur").textContent=fmt(S.pos);}
-function togglePlay(dur,i,fromDone){
-  if(S.playing){stopAudio();$("play").textContent="▶ Play";return;}
-  S.playing=true; $("play").textContent="❚❚ Pause";
-  if(!S.episodeStarted){S.episodeStarted=true; toast("Playing highlight. You can continue whenever you're ready."); if($("go")){$("go").disabled=false; const n=$("go").nextElementSibling; if(n) n.remove();}}
-  const step = dur/60;
-  S.timer=setInterval(()=>{S.pos+=step/4; if(S.pos>=dur){S.pos=dur;stopAudio();if($("play"))$("play").textContent="▶ Replay";S.pos=0;toast("Highlight finished.");} updProg(dur);},250);
-}
-function stopAudio(){S.playing=false;clearInterval(S.timer);}
-
-function calendarHTML(n,st){
-  if(!st.month){ // open on the month of the first available date
-    const d=new Date(TODAY); for(let i=0;i<90;i++){d.setDate(d.getDate()+1); if(openTimes(n,d).length) break;}
-    st.month=[d.getFullYear(),d.getMonth()];
+  const m=app.querySelector('.main'); if(m) m.scrollTop=keep;
+  render.last=S.view;
+  syncPlayer(true);
+  /* the match "arrives" on its own a few seconds after the profile is confirmed */
+  if(S.stage===1 && !S.matchReady && !render.mt){
+    render.mt=setTimeout(()=>{
+      render.mt=null;
+      if(S.stage!==1 || S.matchReady) return;
+      S.matchReady=true; stepIdx=Math.max(stepIdx,stepNo('confirm'));
+      toast('Your match is ready.'); render();
+    },6000);
   }
-  const [y,mo]=st.month, first=new Date(y,mo,1), days=new Date(y,mo+1,0).getDate();
-  let cells=DOW.map(d=>`<div class="dow">${d.slice(0,2)}</div>`).join("");
-  for(let i=0;i<first.getDay();i++) cells+=`<div></div>`;
-  for(let d=1;d<=days;d++){
-    const dt=new Date(y,mo,d), k=key(dt), ok=openTimes(n,dt).length>0;
-    cells+=`<button class="day ${ok?"avail":""} ${st.date===k?"sel":""} ${k===key(TODAY)?"today":""}" ${ok?`data-k="${k}"`:"disabled"} aria-label="${label(dt)}${ok?" (available)":" (unavailable)"}">${d}</button>`;
+}
+/* Optional shortcut for demos. Every screen also has its own way forward. */
+function demoLinks(){
+  const nxt=STEPS[stepIdx+1];
+  return `<div class="demo">
+    <p class="eyebrow">Demo shortcuts</p>
+    <button class="linkbtn" data-act="next" ${nxt?'':'disabled'}>${nxt?'Skip ahead: '+nxt[1]:'End of the demo'}</button>
+    <button class="linkbtn" data-act="reset">Restart demo</button>
+  </div>`;
+}
+
+/* ---------- player ---------- */
+function curChapter(){ let c=0; CHAPTERS.forEach((x,i)=>{ if(S.p.t>=x[0]) c=i; }); return c; }
+let ctaKey='';
+function syncPlayer(force){
+  const t=S.p.t, r=t/DUR*100;
+  document.querySelectorAll('.p-cur').forEach(e=>e.textContent=fmt(t));
+  document.querySelectorAll('.p-rem').forEach(e=>e.textContent='-'+fmt(DUR-t));
+  document.querySelectorAll('.p-fill').forEach(e=>e.style.width=r+'%');
+  document.querySelectorAll('.p-knob').forEach(e=>e.style.left=r+'%');
+  document.querySelectorAll('.p-play').forEach(e=>e.textContent=S.p.playing?'❚❚':'▶');
+  document.querySelectorAll('.p-speed').forEach(e=>e.textContent=S.p.speed+'×');
+  document.querySelectorAll('.scrub').forEach(e=>{e.setAttribute('aria-valuenow',Math.round(t));e.setAttribute('aria-valuetext',fmt(t))});
+  const c=curChapter();
+  document.querySelectorAll('.p-chap').forEach(e=>e.textContent=CHAPTERS[c][1]);
+  document.querySelectorAll('[data-chap]').forEach(e=>e.classList.toggle('on',+e.dataset.chap===c));
+  document.querySelectorAll('[data-hero]').forEach(e=>e.classList.toggle('is-playing',S.p.playing));
+  const key = S.p.playing+'|'+(t>0&&t<DUR?fmt(t):'')+'|'+(t>=DUR);
+  if(force || key!==ctaKey || !S.p.playing){ /* resume label tracks the time while paused */
+    if(force || key.split('|')[0]!==ctaKey.split('|')[0] || !S.p.playing) document.querySelectorAll('.p-cta').forEach(e=>e.innerHTML=cta());
+    ctaKey=key;
   }
-  const times = st.date ? openTimes(n,fromKey(st.date)) : [];
-  const right = st.date
-    ? `<p class="caltitle" style="margin-top:6px">${label(fromKey(st.date))}</p><p class="muted" style="font-size:13px;margin-bottom:10px">Open times (Central Time)</p>
-       <div class="slots">${times.map(t=>`<button class="slot ${st.time===t?"on":""}" data-t="${t}">${t}</button>`).join("")}</div>`
-    : `<p class="muted" style="margin-top:40px">Pick a highlighted date to see open times.</p>`;
-  return `<h2>Pick a date and time</h2><div class="calwrap">
-    <div class="cal"><div class="calhead"><button class="navb" id="calPrev" aria-label="Previous month">‹</button><span class="caltitle">${MONTH_FULL[mo]} ${y}</span><button class="navb" id="calNext" aria-label="Next month">›</button></div>
-      <div class="calgrid">${cells}</div>
-      <p class="note" style="margin:10px 0 0"><span class="legend"></span> Available ${n===2?"(starting a few days after Interview 1)":""}</p></div>
-    <div class="timepanel">${right}</div></div>`;
 }
-
-function showInterview(n, h, isPast){
-  const st=S.int[n], m=$("main");
-  const who = n===1
-    ? {title:"Interview 1 of 2 · Psychologist at CSG", head:"A two-way check, not a test.", init:"PC", name:"Psychologist at CSG",
-       body:"This is a relaxed 45-minute conversation. The psychologist helps you think through what you want from your next role and what Dana's team is really like, and she can share your strengths with Dana in your words. There's nothing to prepare and no right answers. You can also ask her anything."}
-    : {title:"Interview 2 of 2 · Hiring manager", head:"Meet Dana. This is the last step.", init:"DW", name:"Dana Whitfield",
-       body:"A 60-minute conversation with Dana Whitfield. She's already heard your strengths from the psychologist at CSG, in your words, so this is about getting to know each other, not proving yourself."};
-  h+=`<div class="card"><p class="eyebrow">${who.title}</p><h1>${who.head}</h1><p>${who.body}</p>`;
-
-  if(st.inRoom){
-    h+=`<div class="room"><div class="tiles">
-      <div class="tile" id="meTile"><div class="big">${esc(S.profile.name.split(" ").map(w=>w[0]).join("").slice(0,2))}</div><span class="name">You</span></div>
-      <div class="tile"><div class="big">${who.init}</div><span class="name">${who.name}</span></div></div>
-      ${st.confirmLeave
-        ? `<div class="leaveq">Leave the interview? ${n===1?"This counts as finishing Interview 1.":"This finishes your process."}<button class="backb" style="color:#fff;border-color:#777" id="cancelLeave">Stay in call</button><button class="end" id="end" style="border:0;border-radius:999px;padding:8px 14px;background:#c0392b;color:#fff">Yes, leave</button></div>`
-        : `<div class="controls"><button id="cam">📷 Turn on my camera</button><button onclick="toast('Mic muted (demo).')">🎙 Mute</button><button class="end" id="askLeave">Leave call</button></div>`}</div>
-      <p class="note">Mock video room. Your camera is only shown on your own screen and nothing is recorded.</p>`;
-  } else if(st.done){
-    h+=`<div class="booked">✓ Completed · ${st.slot}</div>`;
-  } else if(!st.booked){
-    h+=calendarHTML(n,st)+`<div class="row"><button class="btn" id="book" ${st.time?"":"disabled"}>${st.time?"Book "+label(fromKey(st.date))+" at "+st.time:"Book this time"}</button>
-      <span class="muted" style="font-size:13px">${n===1?"45":"60"} min · video call inside Katalyzr</span></div>`;
-  } else {
-    h+=`<div class="booked"><strong>Booked: ${st.slot} CT</strong><br>
-      ${st.open?"Your room is open now.":"Your room opens at your booked time. We'll send a reminder."}</div>
-      <div class="row"><button class="btn" id="join" ${st.open?"":"disabled"}>Join interview</button>
-      ${st.open?"":`<button class="demo" id="skip">⏩ Prototype only: skip to booked time</button>`}
-      <button class="btn ghost" id="resched">Change time</button></div>`;
+function seek(t){
+  S.p.t=Math.max(0,Math.min(DUR,t));
+  if(S.p.t>=DUR) S.p.playing=false;
+  checkHeard(); syncPlayer(true);
+}
+function checkHeard(){
+  if(!S.p.heard && S.p.t>=DUR*0.9){
+    listened(S); toast('Episode marked as listened. Interviews are unlocked.');
+    if(stepIdx<stepNo('finish')) stepIdx=stepNo('finish');
+    render();
   }
-  h+=`</div>`;
-  m.innerHTML=h; if(!st.inRoom) addCardBack(n===1?4:5);
-
-  const re=()=>showInterview(n,revisitNote(S.viewing),isPast);
-  m.querySelectorAll(".day.avail").forEach(b=>b.onclick=()=>{st.date=b.dataset.k;st.time=null;re();});
-  m.querySelectorAll(".slot").forEach(b=>b.onclick=()=>{st.time=b.dataset.t;re();});
-  if($("calPrev")) $("calPrev").onclick=()=>{const [y,mo]=st.month;st.month=mo===0?[y-1,11]:[y,mo-1];re();};
-  if($("calNext")) $("calNext").onclick=()=>{const [y,mo]=st.month;st.month=mo===11?[y+1,0]:[y,mo+1];re();};
-  if($("book")) $("book").onclick=()=>{st.slot=label(fromKey(st.date))+" · "+st.time;st.booked=true;re();
-    toast("Interview booked: "+st.slot,"Undo",()=>{st.booked=false;st.open=false;re();toast("Booking undone. Pick another time.");});};
-  if($("skip")) $("skip").onclick=()=>{st.open=true;toast("It's "+st.slot.split(" · ")[1]+" on "+st.slot.split(" · ")[0]+". Your room is open.");showInterview(n,revisitNote(S.viewing),isPast);};
-  if($("resched")) $("resched").onclick=()=>{const was=st.slot;st.booked=false;st.open=false;re();
-    toast("Pick a new time.","Keep "+was.split(" · ")[0],()=>{st.slot=was;st.booked=true;re();});};
-  if($("cancelLeave")) $("cancelLeave").onclick=()=>{st.confirmLeave=false;showInterview(n,"",isPast);};
-  if($("join")) $("join").onclick=()=>{
-    st.inRoom=true;
-    S.interviews=n; renderStatus();
-    toast(n===1?"You've joined. The psychologist will be right with you.":"You've joined. Dana is here.");
-    showInterview(n,"",isPast);
-  };
-  if($("cam")) $("cam").onclick=async()=>{
-    try{ if(S.stream){S.stream.getTracks().forEach(t=>t.stop());S.stream=null;$("meTile").querySelector("video")?.remove();$("cam").textContent="📷 Turn on my camera";return;}
-      S.stream=await navigator.mediaDevices.getUserMedia({video:true});
-      const v=document.createElement("video");v.autoplay=true;v.muted=true;v.playsInline=true;v.srcObject=S.stream;
-      const t=$("meTile");t.querySelector(".big").style.display="none";t.prepend(v);$("cam").textContent="📷 Turn off camera";
-    }catch(e){toast("Camera unavailable. That's fine for this demo.");}
-  };
-  if($("askLeave")) $("askLeave").onclick=()=>{st.confirmLeave=true;showInterview(n,"",isPast);};
-  if($("end")) $("end").onclick=()=>{
-    if(S.stream){S.stream.getTracks().forEach(t=>t.stop());S.stream=null;}
-    st.inRoom=false; st.done=true; st.confirmLeave=false;
-    if(n===1){ S.interviews=1; toast("Interview 1 complete. Only one to go."); advance(); }
-    else { S.finished=true; S.viewing=-1; toast("Interview 2 complete."); renderStatus(); renderRail(); showDone(); window.scrollTo({top:0,behavior:"smooth"}); }
-  };
 }
+setInterval(()=>{
+  if(S.p.playing){
+    S.p.t=Math.min(DUR,S.p.t+0.25*S.p.speed);
+    if(S.p.t>=DUR){ S.p.playing=false; }
+    checkHeard(); syncPlayer(S.p.t>=DUR);
+  }
+  if(S.view==='call' && S.call && S.iv[S.call].status==='live'){
+    S.callT+=0.25;
+    const el=document.querySelector('.call-t'); if(el) el.textContent=fmt(S.callT);
+    const cap=document.querySelector('[data-cap]'); const d=IV[S.call];
+    if(cap) cap.textContent=d.lines[Math.floor(S.callT/5)%d.lines.length];
+  }
+},250);
 
-function showDone(){
-  $("main").innerHTML=`<div class="card"><p class="eyebrow">Complete</p>
-  <h1>That's it: two interviews.</h1>
-  <p>You're done, Jordan. Dana and the psychologist at CSG will compare notes, and you'll hear back from CSG within 3 business days. There are no more rounds, take-home tests, or panels.</p>
-  <ul class="recap">
-    <li>Accepted your invite and saw exactly how CSG found you</li>
-    <li>Confirmed your profile in your own words</li>
-    <li>Matched with Dana Whitfield, and saw why</li>
-    <li>Heard Dana's story before meeting her</li>
-    <li>Interview 1 with the psychologist at CSG · ${S.int[1].slot}</li>
-    <li>Interview 2 with Dana Whitfield · ${S.int[2].slot}</li>
-  </ul>
-  <p class="note">Click any stop on the rail to look back. 🔒 Everything stays private between you and CSG.</p>
-  <div class="row"><button class="btnback" onclick="goBack(6)">← Back</button><button class="btn ghost" onclick="location.reload()">Restart demo</button></div></div>`;
+/* scrubbing */
+let drag=null;
+function ratioAt(el,x){ const b=el.getBoundingClientRect(); return Math.max(0,Math.min(1,(x-b.left)/b.width)); }
+document.addEventListener('pointerdown',e=>{
+  const sc=e.target.closest('.scrub'); if(!sc) return;
+  drag=sc; sc.setPointerCapture(e.pointerId); seek(ratioAt(sc,e.clientX)*DUR);
+});
+document.addEventListener('pointermove',e=>{
+  const sc=e.target.closest('.scrub')||drag; if(!sc) return;
+  const r=ratioAt(sc,e.clientX), tip=sc.querySelector('.tip');
+  let c=0; CHAPTERS.forEach((x,i)=>{ if(r*DUR>=x[0]) c=i; });
+  if(tip){ tip.style.left=r*100+'%'; tip.textContent=fmt(r*DUR)+' · '+CHAPTERS[c][1]; }
+  if(drag) seek(r*DUR);
+});
+document.addEventListener('pointerup',()=>drag=null);
+
+/* ---------- events ---------- */
+const SPEEDS=[0.75,1,1.25,1.5,2];
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-act]'); if(!el || el.disabled) return;
+  const a=el.dataset.act, v=el.dataset.v, k=el.dataset.k;
+  switch(a){
+    case 'next': runStep(stepIdx+1); break;
+    case 'reset': S=initial(); stepIdx=0; render(); break;
+    case 'back': back(); break;
+    case 'step': runStep(stepNo(v)); break;
+    case 'nav':
+      if(!unlocked(v)){ toast(lockHint(v)); return; }
+      if(v==='reveal' && S.stage<2) { nav('reveal'); return; }
+      nav(v); break;
+    case 'openReveal': openReveal(el); break;
+    case 'toggle':
+      if(S.p.t>=DUR) S.p.t=0;
+      S.p.playing=!S.p.playing;
+      if(S.p.playing && stepIdx<stepNo('play')) stepIdx=stepNo('play');
+      syncPlayer(true); break;
+    case 'restart': S.p.t=0; S.p.playing=true; syncPlayer(true); break;
+    case 'skip': seek(S.p.t+ +v); break;
+    case 'seek': seek(+v); if(!S.p.playing){S.p.playing=true; syncPlayer(true);} break;
+    case 'speed': S.p.speed=SPEEDS[(SPEEDS.indexOf(S.p.speed)+1)%SPEEDS.length]; syncPlayer(); break;
+    case 'pick': S.iv[k].pick=+v; render(); break;
+    case 'book': book(S,k); stepIdx=Math.max(stepIdx,stepNo(k==='psych'?'bookPsych':'bookHm')); toast('Booked: '+S.iv[k].slot); render(); break;
+    case 'rebook': S.iv[k].status='open'; S.iv[k].slot=null; render(); break;
+    case 'wait': runStep(stepNo(k==='psych'?'psychWait':'hmWait')); break;
+    case 'live': runStep(stepNo(k==='psych'?'psychLive':'hmLive')); break;
+    case 'end': runStep(stepNo(k==='psych'?'psychEnd':'hmEnd')); toast(k==='psych'?'Interview 1 of 2 done. Book your call with Daniel.':'Both interviews done. That\'s the whole process.'); break;
+    case 'mic': S.mic=!S.mic; render(); break;
+    case 'cam': S.cam=!S.cam; render(); break;
+    case 'cc': S.cc=!S.cc; render(); break;
+    case 'sb': S.sbCollapsed=!S.sbCollapsed; render(); break;
+  }
+});
+document.addEventListener('keydown',e=>{
+  const sc=e.target.closest && e.target.closest('.scrub');
+  if(sc && (e.key==='ArrowLeft'||e.key==='ArrowRight')){ e.preventDefault(); seek(S.p.t+(e.key==='ArrowLeft'?-15:30)); }
+  if(e.target.dataset && e.target.dataset.act==='openReveal' && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); openReveal(e.target); }
+});
+function openReveal(el){
+  el.classList.add('opening');
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  setTimeout(()=>{ S.revealOpen=true; stepIdx=Math.max(stepIdx,stepNo('open')); render(); }, reduce?0:550);
 }
+document.addEventListener('input',e=>{
+  const f=e.target.dataset && e.target.dataset.f; if(!f) return;
+  S.profile[f]=e.target.value;
+  const w=document.querySelector(`[data-wrap="${f}"]`); if(w) w.classList.toggle('is-edited',S.profile[f]!==LINKEDIN[f]);
+  if(f==='name'){ const b=document.querySelector('.me b'); if(b) b.textContent=S.profile.name; }
+});
+document.addEventListener('change',e=>{
+  if(e.target.id!=='f-photo' || !e.target.files[0]) return;
+  const rd=new FileReader(); rd.onload=()=>{ S.profile.photo=rd.result; render(); }; rd.readAsDataURL(e.target.files[0]);
+});
 
-S.profileAI={...S.profile};
 render();
 </script>
-</body>
-</html>
+
+</body></html>
