@@ -177,7 +177,7 @@ function openTimes(n,d){
 
 const S = {
   reached:0, viewing:0, finished:false, interviews:0,
-  profile:{name:"Jordan Reyes", role:"Senior Product Designer", skills:"Service design, research synthesis, design systems", motivation:"Building products that make complicated systems feel human."},
+  profile:{name:"Jordan Reyes", role:"Senior Product Designer", techSkills:"Service design, research synthesis, design systems", personalSkills:"Facilitation, active listening, giving clear feedback", motivation:"Building products that make complicated systems feel human."},
   profileAI:null,
   episodeStarted:false, mode:"highlight", pos:0, playing:false, timer:null,
   int:{1:{slot:null,date:null,time:null,month:null,booked:false,open:false,inRoom:false,done:false},2:{slot:null,date:null,time:null,month:null,booked:false,open:false,inRoom:false,done:false}},
@@ -279,13 +279,16 @@ function showStop(i,fromDone){
       <div><label for="f1">Name</label><input id="f1" value="${esc(p.name)}"></div>
       <div><label for="f2">Current role</label><input id="f2" value="${esc(p.role)}"></div>
     </div>
-    <div style="margin-top:14px"><label for="f3">Top skills</label><input id="f3" value="${esc(p.skills)}"></div>
+    <div class="grid2" style="margin-top:14px">
+      <div><label for="f3">Technical skills</label><input id="f3" value="${esc(p.techSkills)}"></div>
+      <div><label for="f5">Personal skills</label><input id="f5" value="${esc(p.personalSkills)}"></div>
+    </div>
     <div style="margin-top:14px"><label for="f4">What motivates you at work? (in your words)</label><textarea id="f4">${esc(p.motivation)}</textarea></div>
     <div class="row"><button class="btn" id="conf">${isPast?"Save changes":"Confirm profile"}</button><span class="muted" style="font-size:13px">🔒 Never shared outside Katalyzr</span></div></div>`;
     m.innerHTML=h; addCardBack(i);
     $("conf").onclick=()=>{
       const prev={...S.profile};
-      S.profile={name:$("f1").value,role:$("f2").value,skills:$("f3").value,motivation:$("f4").value};
+      S.profile={name:$("f1").value,role:$("f2").value,techSkills:$("f3").value,personalSkills:$("f5").value,motivation:$("f4").value};
       const undo=()=>{S.profile=prev;S.viewing=1;render();toast("Changes undone. You're back on your profile.");};
       if(isPast){toast("Profile updated.","Undo",undo);showStop(i,fromDone);} else {advance();toast("Profile confirmed.","Undo",undo);}
     };
