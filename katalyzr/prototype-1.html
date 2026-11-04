@@ -344,14 +344,14 @@ function showStop(i,fromDone){
     <h1>You've been matched with one hiring manager.</h1>
     <div class="person" style="margin-top:16px"><div class="avatar">DW</div>
       <div><strong style="font-size:18px">Dana Whitfield</strong><br><span class="muted">VP of Product · Meridian Health · Chicago (hybrid)</span><br><span style="font-size:14px">Role: Principal Product Designer, Care Experience</span></div></div>
-    <details id="why"><summary>Why you were paired</summary><ul>
+    <details id="why" open><summary>Why you were paired</summary><ul>
       <li><strong>Shared motivation:</strong> You both describe the goal of your work as making complicated systems feel human. Dana talks about this a lot on her podcast episode.</li>
       <li><strong>Skills she needs:</strong> Her team is rebuilding patient scheduling and needs someone strong in service design and research synthesis. Those are your top two skills.</li>
       <li><strong>How you like to work:</strong> You both prefer small teams, direct feedback, and time to think before deciding.</li>
     </ul><p class="note">Matching does not use age, gender, race, or other demographic factors, and it doesn't reward simply being similar to the hiring manager. Dana sees these same three reasons, nothing more.</p></details>
     <div class="row">${isPast?`<span class="muted">✓ Match viewed</span>`:`<button class="btn" id="go">Continue to intro episode</button>`}</div></div>`;
     m.innerHTML=h; addCardBack(i);
-    $("why").addEventListener("toggle",e=>{ if(e.target.open) toast("Showing why you were paired."); });
+    $("why").querySelector("summary").addEventListener("click",()=>{ if(!$("why").open) toast("Showing why you were paired."); });
     if($("go")) $("go").onclick=()=>advance();
   }
 
