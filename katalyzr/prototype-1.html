@@ -126,6 +126,19 @@ textarea{min-height:70px;resize:vertical}
 .linkb{background:none;border:0;color:var(--accent);text-decoration:underline;text-underline-offset:3px;padding:0;font-size:13.5px}
 .leaveq{display:flex;justify-content:center;align-items:center;gap:10px;margin-top:12px;color:#fff;font-size:14px}
 .revisit{font-size:13px;background:var(--accent-soft);border-radius:8px;padding:8px 12px;margin-bottom:14px}
+fieldset.skills{border:0;margin:14px 0 0;padding:0;min-width:0}
+fieldset.skills legend{padding:0;font-size:13px;color:var(--muted);margin-bottom:6px}
+fieldset.skills legend span{font-size:12px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:14px}
+.chip:hover{border-color:var(--accent)}
+.chip .box{width:14px;height:14px;border:1.5px solid var(--muted);border-radius:4px;display:grid;place-items:center;font-size:10px;line-height:1;flex:none}
+.chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+.chip[aria-pressed="true"] .box{background:var(--accent);border-color:var(--accent);color:#fff}
+.chipadd{display:inline-flex;align-items:center;border:1px dashed var(--line);border-radius:999px;padding:0 4px 0 12px;background:var(--bg)}
+.chipadd:focus-within{border-color:var(--accent)}
+.chipadd input{width:130px;border:0;background:none;padding:6px 0;font-size:14px;outline:none}
+.chipadd button{background:none;border:0;color:var(--accent);font-weight:700;font-size:16px;padding:2px 8px}
 </style>
 </head>
 <body>
@@ -177,14 +190,46 @@ function openTimes(n,d){
 
 const S = {
   reached:0, viewing:0, finished:false, interviews:0,
-  profile:{name:"Jordan Reyes", role:"Senior Product Designer", techSkills:"Service design, research synthesis, design systems", personalSkills:"Facilitation, active listening, giving clear feedback", motivation:"Building products that make complicated systems feel human."},
+  profile:{name:"Jordan Reyes", role:"Senior Product Designer", techSkills:["Service design","Research synthesis","Design systems"], personalSkills:["Facilitation","Active listening","Giving clear feedback"], motivation:"Building products that make complicated systems feel human."},
   profileAI:null,
   episodeStarted:false, mode:"highlight", pos:0, playing:false, timer:null,
   int:{1:{slot:null,date:null,time:null,month:null,booked:false,open:false,inRoom:false,done:false},2:{slot:null,date:null,time:null,month:null,booked:false,open:false,inRoom:false,done:false}},
   stream:null
 };
 
+// Preset words for the profile's skill pickers
+const TECH_SKILLS = ["Service design","Research synthesis","Design systems","Prototyping","Interaction design","Usability testing","Information architecture","Accessibility","Visual design","Data analysis"];
+const PERSONAL_SKILLS = ["Facilitation","Active listening","Giving clear feedback","Collaboration","Empathy","Storytelling","Mentoring","Adaptability","Conflict resolution"];
+
 const $ = id => document.getElementById(id);
+
+// A group of clickable skill boxes: presets plus anything the person added themselves
+function chipPicker(id,label,presets,selected){
+  const all=[...presets,...selected.filter(s=>!presets.includes(s))];
+  return `<fieldset class="skills" id="${id}"><legend>${label} <span>· click to select, or add your own</span></legend><div class="chips">
+    ${all.map(s=>chipBtn(s,selected.includes(s))).join("")}
+    <span class="chipadd"><input aria-label="Add your own ${label.toLowerCase()}" placeholder="Add your own"><button type="button" aria-label="Add">+</button></span>
+  </div></fieldset>`;
+}
+function chipBtn(s,on){return `<button type="button" class="chip" aria-pressed="${on}" data-skill="${esc(s)}"><span class="box" aria-hidden="true">${on?"✓":""}</span>${esc(s)}</button>`;}
+function wireChips(id){
+  const fs=$(id), add=fs.querySelector(".chipadd"), inp=add.querySelector("input");
+  fs.addEventListener("click",e=>{
+    const c=e.target.closest(".chip"); if(!c) return;
+    const on=c.getAttribute("aria-pressed")!=="true";
+    c.setAttribute("aria-pressed",on); c.querySelector(".box").textContent=on?"✓":"";
+  });
+  const addOne=()=>{
+    const v=inp.value.trim(); if(!v) return;
+    const ex=[...fs.querySelectorAll(".chip")].find(c=>c.dataset.skill.toLowerCase()===v.toLowerCase());
+    if(ex){ if(ex.getAttribute("aria-pressed")!=="true") ex.click(); }
+    else add.insertAdjacentHTML("beforebegin",chipBtn(v,true));
+    inp.value=""; inp.focus();
+  };
+  add.querySelector("button").onclick=addOne;
+  inp.addEventListener("keydown",e=>{ if(e.key==="Enter"&&!e.isComposing){e.preventDefault();addOne();} });
+}
+const pickedChips = id => [...$(id).querySelectorAll('.chip[aria-pressed="true"]')].map(c=>c.dataset.skill);
 // toast(message, [actionLabel, actionFn]) — an action (e.g. "Undo") keeps it up longer
 function toast(msg,action,fn){
   const t=$("toast"); t.innerHTML=""; t.append(msg);
@@ -279,16 +324,14 @@ function showStop(i,fromDone){
       <div><label for="f1">Name</label><input id="f1" value="${esc(p.name)}"></div>
       <div><label for="f2">Current role</label><input id="f2" value="${esc(p.role)}"></div>
     </div>
-    <div class="grid2" style="margin-top:14px">
-      <div><label for="f3">Technical skills</label><input id="f3" value="${esc(p.techSkills)}"></div>
-      <div><label for="f5">Personal skills</label><input id="f5" value="${esc(p.personalSkills)}"></div>
-    </div>
+    ${chipPicker("f3","Technical skills",TECH_SKILLS,p.techSkills)}
+    ${chipPicker("f5","Personal skills",PERSONAL_SKILLS,p.personalSkills)}
     <div style="margin-top:14px"><label for="f4">What motivates you at work? (in your words)</label><textarea id="f4">${esc(p.motivation)}</textarea></div>
     <div class="row"><button class="btn" id="conf">${isPast?"Save changes":"Confirm profile"}</button><span class="muted" style="font-size:13px">🔒 Never shared outside Katalyzr</span></div></div>`;
-    m.innerHTML=h; addCardBack(i);
+    m.innerHTML=h; addCardBack(i); wireChips("f3"); wireChips("f5");
     $("conf").onclick=()=>{
       const prev={...S.profile};
-      S.profile={name:$("f1").value,role:$("f2").value,techSkills:$("f3").value,personalSkills:$("f5").value,motivation:$("f4").value};
+      S.profile={name:$("f1").value,role:$("f2").value,techSkills:pickedChips("f3"),personalSkills:pickedChips("f5"),motivation:$("f4").value};
       const undo=()=>{S.profile=prev;S.viewing=1;render();toast("Changes undone. You're back on your profile.");};
       if(isPast){toast("Profile updated.","Undo",undo);showStop(i,fromDone);} else {advance();toast("Profile confirmed.","Undo",undo);}
     };
