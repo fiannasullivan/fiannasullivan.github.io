@@ -65,3 +65,14 @@ h1 em.text-primary { color: var(--csg-coral-deep); }
 
 /* Fixed-width step numbers so the icon tiles line up */
 .csg-step-num { width: 1.5rem; text-align: center; flex-shrink: 0; }
+
+/* Step 2 flip card: front = face-down card, back = the match's profile card */
+.flip-card { perspective: 1600px; }
+.flip-inner { display: grid; transform-style: preserve-3d; transition: transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.flip-inner > * { grid-area: 1 / 1; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.flip-front { cursor: pointer; transition: box-shadow 0.2s, transform 0.2s; }
+.flip-front:hover { box-shadow: 0 12px 32px -12px rgba(34, 31, 59, 0.35); }
+.flip-front:hover .flip-hint { text-decoration: underline; }
+.flip-back { transform: rotateY(180deg); }
+.flip-card.is-flipped .flip-inner { transform: rotateY(180deg); }
+.flip-card.is-flipped .flip-front { pointer-events: none; }

@@ -8,7 +8,7 @@
   const STEP_LABELS = {
     welcome: "Welcome",
     build: "Build your card",
-    waiting: "Waiting for your match",
+    waiting: "Flip to see your match",
     match: "Match reveal",
     episode: "Listen to the introduction",
     psychologist: "Psychologist interview",
@@ -60,13 +60,6 @@
   const VALUES = ["Candor", "Ownership", "Curiosity", "Craft", "Long-term thinking", "Generosity", "Speed", "Humility"];
   const WORKING_STYLES = ["Async-first", "Written decisions", "Deep work blocks", "High autonomy", "Highly collaborative", "In-person energy"];
   const PERSONALITIES = ["Direct", "Warm", "Calm under pressure", "Curious", "Playful", "Restless", "Reflective"];
-  const WAITING_MESSAGES = [
-    "Reading your card closely…",
-    "Reviewing a short list of CSG hiring managers…",
-    "Comparing values and working style…",
-    "Checking for a genuine mindset fit…",
-    "Found someone you should meet.",
-  ];
   const HOW_IT_WORKS = [
     { title: "Build your card", body: "Tell us how you think and work. Not a résumé.", icon: "profile-card" },
     { title: "Meet your match", body: "One hiring manager, chosen by hand for shared mindset.", icon: "hiring-manager" },
@@ -134,7 +127,7 @@
     episodeListened: false,
     showErrors: false,
     chipDrafts: {},
-    waitIndex: 0,
+    flipped: false, // step 2: has the match card been flipped over?
     player: { time: 0, playing: false, speed: 1, chaptersOpen: false },
     call: { joined: false, seconds: 0, mic: true, cam: true, captions: true },
   };
@@ -151,7 +144,7 @@
     state.step = step;
     state.showErrors = false;
     state.chipDrafts = {};
-    state.waitIndex = 0;
+    state.flipped = false;
     state.player = { time: 0, playing: false, speed: 1, chaptersOpen: false };
     state.call = { joined: false, seconds: 0, mic: true, cam: true, captions: true };
     clearTimers();
@@ -221,7 +214,6 @@
     mic: '<path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/>',
     "mic-off": '<path d="M12 19v3"/><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"/><path d="M16.95 16.95A7 7 0 0 1 5 12v-2"/><path d="M18.89 13.23A7 7 0 0 0 19 12v-2"/><path d="m2 2 20 20"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12"/>',
     "phone-off": '<path d="M10.1 13.9a14 14 0 0 0 3.732 2.668 1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2 18 18 0 0 1-12.728-5.272"/><path d="M22 2 2 22"/><path d="M4.76 13.582A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 .244.473"/>',
-    bot: '<path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>',
     // Custom: hiring manager — a person holding a clipboard (drawn in the Lucide style)
     "hiring-manager": '<circle cx="8" cy="6" r="3.5"/><path d="M2 21v-1.5A5.5 5.5 0 0 1 7.5 14H11"/><rect x="13" y="11" width="8" height="10.5" rx="1.5"/><path d="M15.5 10.5h3"/><path d="M15.5 15h3"/><path d="M15.5 18h3"/>',
     // Custom: profile card — a 16:9 sheet of paper (folded corner) with a person in the middle
@@ -253,7 +245,7 @@
   const iconTile = (name, size = "size-10") =>
     `<span class="${cx("flex shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground", size)}">${icon(name, "size-5")}</span>`;
   // Icon shown next to each page's eyebrow label
-  const STEP_ICONS = { build: "profile-card", waiting: "search", match: "handshake", episode: "headphones", psychologist: "brain", "hiring-manager": "hiring-manager", complete: "party-popper" };
+  const STEP_ICONS = { build: "profile-card", waiting: "sparkles", match: "handshake", episode: "headphones", psychologist: "brain", "hiring-manager": "hiring-manager", complete: "party-popper" };
   function pageHeading({ eyebrow, title, description }) {
     const ic = STEP_ICONS[state.step];
     return `<div class="mb-8 max-w-2xl">
@@ -538,21 +530,30 @@
       </div></div>`;
   }
 
+  // Step 2: CSG has already chosen the match by hand, before the applicant joined.
+  // The applicant flips a face-down card to see who it is.
   function waitingScreen() {
-    const last = state.waitIndex === WAITING_MESSAGES.length - 1;
+    const first = firstName(MATCH.name);
+    const front = `<button type="button" data-action="flip" class="flip-front flex w-full flex-col items-center justify-center gap-5 rounded-2xl border-2 border-dashed border-brass/60 bg-card p-8 text-center shadow-sm" aria-label="Flip this card to see your match">
+        <span class="flex size-16 items-center justify-center rounded-full bg-accent">${icon("hiring-manager", "size-7 text-accent-foreground")}</span>
+        <div><p class="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Your match</p>
+          <p class="mt-2 font-serif text-2xl leading-tight text-balance">Flip this card to see your match!</p></div>
+        <p class="text-sm text-muted-foreground">Chosen by hand by Culminate Strategy Group</p>
+        <span class="flip-hint flex items-center gap-1.5 text-xs font-medium text-primary">${icon("rotate-cw", "size-3.5")}Click to flip</span>
+      </button>`;
+    const back = `<div class="flip-back">${profileCard(MATCH, { label: "Your match" })}</div>`;
     return `<div>
-      ${pageHeading({ eyebrow: "Step 2 · Finding your match", title: "Your card is complete.", description: "The Katalyzr bot is looking for the one hiring manager you should meet. This isn’t a marketplace — you’ll get one introduction." })}
+      ${pageHeading({ eyebrow: "Step 2 · Your match is ready", title: "Your card is complete.", description: "Culminate Strategy Group already chose the one hiring manager you should meet — by hand, before you were invited. This isn’t a marketplace — you get one introduction." })}
       ${threeColumns(
         profileCard(state.applicant, { label: "You" }),
-        `<div class="flex h-full flex-col items-center pt-32">
-          <div class="flex w-full items-center gap-2" aria-hidden="true">${Array.from({ length: 9 }, (_, i) => `<span class="h-1.5 flex-1 rounded-full bg-brass/70 animate-pulse" style="animation-delay:${120 * i}ms"></span>`).join("")}</div>
-          ${last ? button({ size: "lg", className: cx("csg-cta mt-10 h-11 gap-2 rounded-full px-5", anim("animate-in fade-in zoom-in-95")), attrs: 'data-action="goto" data-step="match"', content: "Reveal your match" + icon("arrow-right", "size-4") }) : ""}
+        `<div class="flex h-full flex-col items-center pt-32 text-center">
+          <div class="flex w-full items-center" aria-hidden="true">
+            <span class="size-2 rounded-full bg-brass"></span><span class="h-px flex-1 bg-gradient-to-r from-brass to-transparent"></span><span class="h-px flex-1 bg-gradient-to-l from-brass to-transparent"></span><span class="size-2 rounded-full bg-brass"></span>
+          </div>
+          <p id="flip-status" role="status" aria-live="polite" class="mt-6 max-w-xs text-sm text-muted-foreground">${state.flipped ? `Meet ${esc(first)}. Next, see everything you two share.` : "Your match is waiting on the other side of the card."}</p>
+          ${state.flipped ? button({ size: "lg", className: "csg-cta mt-8 h-11 gap-2 rounded-full px-5", attrs: 'data-action="goto" data-step="match"', content: "See what you share" + icon("arrow-right", "size-4") }) : ""}
         </div>`,
-        `<div class="flex aspect-[3/5] w-full flex-col items-center justify-center gap-5 rounded-2xl border-2 border-dashed border-brass/60 bg-card/50 p-8 text-center">
-          <span class="${cx("flex size-16 items-center justify-center rounded-full bg-accent", !last && "animate-pulse")}">${icon("bot", "size-7 text-accent-foreground")}</span>
-          <div><p class="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Your match</p><p class="mt-2 font-serif text-2xl leading-tight text-balance">Your match is being found by the Katalyzr bot</p></div>
-          <p id="wait-status" role="status" aria-live="polite" class="min-h-10 text-sm text-muted-foreground">${esc(WAITING_MESSAGES[state.waitIndex])}</p>
-        </div>`
+        `<div class="${cx("flip-card", state.flipped && "is-flipped")}"><div class="flip-inner">${front}${back}</div></div>`
       )}</div>`;
   }
 
@@ -765,15 +766,6 @@
 
   /* ---------- Timers per step ---------- */
   function startStepTimers() {
-    if (state.step === "waiting") {
-      const t = setInterval(() => {
-        if (state.waitIndex >= WAITING_MESSAGES.length - 1) return clearInterval(t);
-        state.waitIndex++;
-        if (state.waitIndex === WAITING_MESSAGES.length - 1) { clearInterval(t); render(true); }
-        else { const s = document.getElementById("wait-status"); if (s) s.textContent = WAITING_MESSAGES[state.waitIndex]; }
-      }, 1400);
-      timers.push(t);
-    }
     if (state.step === "episode") {
       timers.push(setInterval(() => {
         if (!state.player.playing) return;
@@ -805,6 +797,13 @@
     switch (action) {
       case "goto": return goTo(el.dataset.step);
       case "restart": return restart();
+      case "flip": {
+        if (state.flipped) return;
+        state.flipped = true;
+        const card = el.closest(".flip-card");
+        if (card) card.classList.add("is-flipped"); // animate the flip first,
+        return setTimeout(() => { if (state.step === "waiting") render(); }, 800); // then show the next button
+      }
       case "fill-sample": state.applicant = { ...SAMPLE_APPLICANT }; return render();
       case "sample-photo": return updateApplicant({ photo: SAMPLE_APPLICANT.photo });
       case "chip": {
