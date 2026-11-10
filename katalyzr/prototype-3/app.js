@@ -446,7 +446,7 @@
           </div>
         </div>
         <ol class="flex flex-col gap-3">${HOW_IT_WORKS.map((h, i) => `<li class="flex items-center gap-4 rounded-xl border bg-card/70 p-4">
-          <span class="font-serif text-3xl leading-none text-brass">${i + 1}</span>
+          <span class="csg-step-num font-serif text-3xl leading-none text-brass">${i + 1}</span>
           ${iconTile(h.icon)}
           <div><p class="font-medium">${esc(h.title)}</p><p class="text-sm text-muted-foreground">${esc(h.body)}</p></div></li>`).join("")}</ol>
       </aside>

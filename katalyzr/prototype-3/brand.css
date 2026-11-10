@@ -62,3 +62,6 @@ h1 em.text-primary { color: var(--csg-coral-deep); }
 /* Main calls to action get the coral pill from the CSG site */
 .csg-cta { background: var(--csg-coral) !important; color: #fff !important; }
 .csg-cta:hover { background: var(--csg-coral-deep) !important; }
+
+/* Fixed-width step numbers so the icon tiles line up */
+.csg-step-num { width: 1.5rem; text-align: center; flex-shrink: 0; }
