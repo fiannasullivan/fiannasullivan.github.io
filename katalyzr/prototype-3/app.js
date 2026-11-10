@@ -417,7 +417,7 @@
         ${prev ? `<button type="button" data-action="goto" data-step="${prev}" class="group mb-6 inline-flex items-center gap-2 rounded-full border-2 border-primary/50 bg-card px-4 py-2 text-sm font-medium text-primary shadow-sm transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">${icon("arrow-left", "size-4 transition-transform group-hover:-translate-x-0.5")}Back to ${esc(STEP_LABELS[prev])}</button>` : ""}
         ${content}
       </div></main>
-      <div class="sticky bottom-0 z-10">${progressNav()}</div>
+      ${state.optedOut && state.step === "welcome" ? "" : `<div class="sticky bottom-0 z-10">${progressNav()}</div>`}
     </div>`;
   }
 
