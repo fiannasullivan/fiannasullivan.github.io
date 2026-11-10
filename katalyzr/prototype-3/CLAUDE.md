@@ -2,7 +2,8 @@
 
 Plain HTML/CSS/JS port of the v0 build that was at katalyzr.vercel.app. No build step, no npm: open `index.html` or serve the folder.
 
-- `index.html` — page shell; loads Geist + Instrument Serif from Google Fonts, then `styles.css` and `app.js`.
+- `index.html` — page shell; loads Montserrat + Carlito from Google Fonts, then `styles.css`, `brand.css` and `app.js`. Those links end in `?v=N`: bump N whenever you change a CSS/JS file, or browsers keep showing the cached old version.
+- `brand.css` — Culminate Strategy Group branding (palette, fonts, navy header, coral CTAs), layered over `styles.css`.
 - `styles.css` — the compiled Tailwind v4 stylesheet copied from the Vercel build. It only contains classes the original app used, so a NEW Tailwind class won't work unless you add a matching rule here (append plain CSS at the bottom, e.g. `.my-class{...}`). Theme colors are CSS variables in `:root` (`--primary`, `--brass`, `--accent`, ...).
 - `app.js` — the whole app, one IIFE:
   - Data at the top (steps, sample applicant `SAMPLE_APPLICANT`, hiring manager `MATCH`, psychologist `PSYCH`, chapters, skill/value lists).
