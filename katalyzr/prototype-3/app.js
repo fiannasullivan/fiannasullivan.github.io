@@ -226,6 +226,9 @@
   const icon = (name, cls = "") =>
     `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="${cx("lucide lucide-" + name, cls)}" aria-hidden="true">${ICONS[name]}</svg>`;
 
+  // CSG logo mark (from culminatestrategy.com), drawn in currentColor
+  const CSG_MARK = '<svg class="csg-logo" viewBox="12 12 83 87" fill="currentColor" aria-hidden="true"><path d="M88.2294 76.422C86.4259 79.2256 84.2551 81.809 81.8027 84.069C80.234 80.7079 78.0577 77.7398 75.4471 75.2555C80.2773 70.3397 83.2049 63.9559 83.7422 57.0278L83.9213 54.7017L59.9854 54.6862C57.598 54.6834 55.6612 56.619 55.6584 59.0055L79.1427 59.0191C78.2633 64.1478 75.806 68.8205 72.0791 72.5001C67.2981 69.1411 61.5248 67.1907 55.4034 67.1526C48.6359 67.1526 43.186 61.3902 43.706 54.5139C44.0898 49.4396 47.8171 45.0835 52.7859 43.9783C55.9592 43.2733 59.1355 43.8831 61.708 45.5265C63.5883 46.7292 66.0274 46.5821 67.741 45.1535C63.8531 40.4857 57.6524 38.3455 51.5044 39.8369C45.191 41.3693 40.3781 46.7428 39.5034 53.1808C38.1723 62.959 45.715 71.3633 55.2155 71.4722V71.4741C65.903 71.4741 75.413 78.2598 78.8821 88.3638L79.8724 91.2513L82.2662 89.3563C87.221 85.4369 91.3334 80.3844 94.1523 74.7475C92.04 73.6916 89.5068 74.438 88.2294 76.422Z"/><path d="M54.4907 79.7455C40.4509 79.7455 29.0742 68.1162 29.488 53.9838C29.8451 41.7951 39.1696 31.4652 51.263 29.9216C58.5299 28.9926 65.63 31.2373 70.9516 35.8953C72.6876 37.4173 75.2688 37.4466 77.041 35.9698C70.4966 28.1103 60.3701 24.1708 50.0312 25.7277C36.2015 27.81 25.6815 39.6703 25.1752 53.6449C24.5717 70.3153 37.9555 84.0676 54.4907 84.0676C59.9719 84.0676 64.5929 87.7745 65.8696 92.9355C62.5044 93.8674 59.0186 94.3369 55.4829 94.3369C33.5909 94.3369 15.8646 76.1607 16.6037 54.1055C17.2679 34.2388 33.148 17.8438 52.9875 16.6096C67.3935 15.7141 80.6913 22.6196 88.2456 34.4562C89.5111 36.4402 92.0478 37.1748 94.1524 36.1239C86.6114 21.0537 71.3056 11.815 54.4072 12.2241C31.0954 12.7872 12.2433 32.1453 12.259 55.462C12.2726 79.285 31.6581 98.659 55.4829 98.659C60.1012 98.659 64.6446 97.9352 68.9914 96.5049L70.6324 95.9643L70.4673 94.2444C69.672 85.9778 62.8025 79.7455 54.4907 79.7455Z"/></svg>';
+
   /* ---------- Shared components ---------- */
   function pageHeading({ eyebrow, title, description }) {
     return `<div class="mb-8 max-w-2xl">
@@ -372,8 +375,8 @@
   function shell(content) {
     const prev = STEPS[STEPS.indexOf(state.step) - 1];
     return `<div class="flex min-h-screen min-w-[1200px] flex-col">
-      <header class="border-b"><div class="mx-auto flex max-w-7xl items-center justify-between px-8 py-4">
-        <div class="flex items-baseline gap-3"><span class="font-serif text-2xl tracking-tight">Katalyzr</span><span class="text-xs text-muted-foreground">by Culminate Strategy Group</span></div>
+      <header class="csg-header border-b"><div class="mx-auto flex max-w-7xl items-center justify-between px-8 py-4">
+        <div class="flex items-center gap-3">${CSG_MARK}<span class="font-serif text-2xl tracking-tight">Katalyzr</span><span class="text-xs text-muted-foreground">by Culminate Strategy Group</span></div>
         <div class="flex items-center gap-4">
           <span class="flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground">${icon("lock", "size-3")}Private invitation · KTZ-0417</span>
           <label class="flex items-center gap-2 text-xs text-muted-foreground"><span>Prototype</span>
@@ -403,7 +406,7 @@
           <div class="flex size-10 items-center justify-center rounded-full bg-primary font-serif text-lg text-primary-foreground">PN</div>
           <div><p class="font-serif text-xl italic leading-tight">Priya Natarajan</p><p class="text-xs text-muted-foreground">Partner, Culminate Strategy Group</p></div>
         </div>
-        ${button({ size: "lg", className: "mt-10 h-12 gap-2 rounded-full px-6 text-base", attrs: 'data-action="goto" data-step="build"', content: "Accept invitation" + icon("arrow-right", "size-4") })}
+        ${button({ size: "lg", className: "csg-cta mt-10 h-12 gap-2 rounded-full px-6 text-base", attrs: 'data-action="goto" data-step="build"', content: "Accept invitation" + icon("arrow-right", "size-4") })}
       </section>
       <aside aria-label="How it works" class="flex flex-col gap-8">
         <div class="relative mx-auto h-72 w-full max-w-md" aria-hidden="true">
@@ -501,7 +504,7 @@
           ${section("Mindset", field("The belief that drives how you work", "f-mindset", `<textarea id="f-mindset" data-field="mindset" rows="2" maxlength="100" class="${cx(INPUT, "resize-none font-serif text-lg italic", err(!a.mindset.trim()) && INVALID)}">${esc(a.mindset)}</textarea>`))}
           <div class="flex items-center justify-between border-t pt-6">
             <p class="text-sm text-muted-foreground">${ready ? "Your card is ready." : "Complete every section to find your match."}</p>
-            <button type="submit" data-slot="button" class="${merge(cx(BTN_BASE, BTN_VARIANT.default, BTN_SIZE.lg, "h-11 gap-2 rounded-full px-5"))}">Find my match${icon("arrow-right", "size-4")}</button>
+            <button type="submit" data-slot="button" class="${merge(cx(BTN_BASE, BTN_VARIANT.default, BTN_SIZE.lg, "csg-cta h-11 gap-2 rounded-full px-5"))}">Find my match${icon("arrow-right", "size-4")}</button>
           </div>
         </form>
       </div></div>`;
@@ -515,7 +518,7 @@
         profileCard(state.applicant, { label: "You" }),
         `<div class="flex h-full flex-col items-center pt-32">
           <div class="flex w-full items-center gap-2" aria-hidden="true">${Array.from({ length: 9 }, (_, i) => `<span class="h-1.5 flex-1 rounded-full bg-brass/70 animate-pulse" style="animation-delay:${120 * i}ms"></span>`).join("")}</div>
-          ${last ? button({ size: "lg", className: cx("mt-10 h-11 gap-2 rounded-full px-5", anim("animate-in fade-in zoom-in-95")), attrs: 'data-action="goto" data-step="match"', content: "Reveal your match" + icon("arrow-right", "size-4") }) : ""}
+          ${last ? button({ size: "lg", className: cx("csg-cta mt-10 h-11 gap-2 rounded-full px-5", anim("animate-in fade-in zoom-in-95")), attrs: 'data-action="goto" data-step="match"', content: "Reveal your match" + icon("arrow-right", "size-4") }) : ""}
         </div>`,
         `<div class="flex aspect-[3/5] w-full flex-col items-center justify-center gap-5 rounded-2xl border-2 border-dashed border-brass/60 bg-card/50 p-8 text-center">
           <span class="${cx("flex size-16 items-center justify-center rounded-full bg-accent", !last && "animate-pulse")}">${icon("bot", "size-7 text-accent-foreground")}</span>
@@ -679,7 +682,7 @@
             <p class="flex items-center justify-center gap-2 text-sm text-muted-foreground">${icon("calendar-check", "size-4")}Scheduled for today · 2:00 PM</p>
             <p class="mt-2 font-serif text-3xl">${esc(cfg.remote.name)} is ready when you are.</p>
           </div>
-          ${button({ size: "lg", className: "h-12 gap-2 rounded-full px-6 text-base", attrs: 'data-action="join"', content: icon("video", "size-4") + "Join video call" })}
+          ${button({ size: "lg", className: "csg-cta h-12 gap-2 rounded-full px-6 text-base", attrs: 'data-action="join"', content: icon("video", "size-4") + "Join video call" })}
         </section>`}
       </div></div>`;
   }

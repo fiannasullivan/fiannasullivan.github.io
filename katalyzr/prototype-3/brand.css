@@ -1,0 +1,64 @@
+/* Culminate Strategy Group branding for Katalyzr.
+   Loaded after styles.css, so anything here overrides the original v0 look.
+   Colors and fonts taken from culminatestrategy.com. */
+
+:root {
+  /* CSG palette */
+  --csg-navy: #221f3b;        /* hero background */
+  --csg-ink: #141115;         /* headline text */
+  --csg-indigo: #605d9e;      /* periwinkle accent */
+  --csg-indigo-deep: #4d4a7e;
+  --csg-coral: #f4687b;       /* "Get in Touch" buttons */
+  --csg-coral-deep: #d23a52;
+  --csg-pink: #f9b3bd;        /* eyebrow text on dark */
+  --csg-pink-wash: #fde4e8;
+  --csg-lavender: #efeff6;    /* light section background */
+  --csg-lavender-line: #dfdfec;
+  --csg-gray: #565661;        /* body copy gray */
+
+  /* Map onto the theme variables the app already uses */
+  --background: #fafafc;
+  --foreground: var(--csg-ink);
+  --card: #ffffff;
+  --card-foreground: var(--csg-ink);
+  --popover: #ffffff;
+  --popover-foreground: var(--csg-ink);
+  --primary: var(--csg-navy);
+  --primary-foreground: #ffffff;
+  --secondary: var(--csg-lavender);
+  --secondary-foreground: var(--csg-ink);
+  --muted: var(--csg-lavender);
+  --muted-foreground: var(--csg-gray);
+  --accent: var(--csg-pink-wash);          /* shared-trait chips, current step */
+  --accent-foreground: #8f1f33;
+  --brass: var(--csg-coral);               /* rules, numbers, play button, scrubber */
+  --border: var(--csg-lavender-line);
+  --input: #d4d4e4;
+  --ring: var(--csg-indigo);
+
+  /* Montserrat is much wider than Instrument Serif, so the big headings come down a step */
+  --text-7xl: 3.5rem;
+  --text-6xl: 3rem;
+  --text-5xl: 2.5rem;
+}
+
+/* Fonts: Carlito for body, Montserrat for headings (were Geist and Instrument Serif) */
+html._8NX9hq_variable { --font-geist: "Carlito", "Calibri", Arial, sans-serif; }
+html.YQIu9G_variable { --font-instrument: "Montserrat", Arial, sans-serif; }
+body { font-size: 1.0625rem; }
+.font-serif { font-weight: 600; letter-spacing: -0.02em; }
+.font-serif.italic, .font-serif .italic, em { font-style: normal; }
+
+/* Emphasis in headings uses CSG coral, like the site's accent text */
+h1 em.text-primary { color: var(--csg-coral-deep); }
+
+/* Header: dark navy bar like culminatestrategy.com */
+.csg-header { background: var(--csg-navy); color: #fff; border-color: transparent; }
+.csg-header .text-muted-foreground { color: rgba(255, 255, 255, 0.72); }
+.csg-header .bg-card { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.2); }
+.csg-header select { background: var(--csg-navy); color: #fff; border-color: rgba(255, 255, 255, 0.3); }
+.csg-logo { height: 30px; width: auto; color: #fff; }
+
+/* Main calls to action get the coral pill from the CSG site */
+.csg-cta { background: var(--csg-coral) !important; color: #fff !important; }
+.csg-cta:hover { background: var(--csg-coral-deep) !important; }
