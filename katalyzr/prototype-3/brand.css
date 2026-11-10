@@ -76,3 +76,6 @@ h1 em.text-primary { color: var(--csg-coral-deep); }
 .flip-back { transform: rotateY(180deg); }
 .flip-card.is-flipped .flip-inner { transform: rotateY(180deg); }
 .flip-card.is-flipped .flip-front { pointer-events: none; }
+
+/* Utility used by the podcast step (not in the compiled Tailwind file) */
+.-mt-2 { margin-top: -0.5rem; }

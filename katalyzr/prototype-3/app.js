@@ -645,20 +645,21 @@
       ${pageHeading({ eyebrow: "Step 4 · The introduction", title: esc(`Hear ${first} in her own words.`), description: `Instead of a job description, you get an hour of ${first} on ${PODCAST}. You haven’t heard this one before — that’s the point.` })}
       ${threeColumns(
         profileCard(state.applicant, { label: "You", highlight: c.highlight }),
-        `<div class="flex h-full flex-col items-center gap-6 pt-10 text-center">
+        `<div class="flex h-full flex-col items-center gap-5 pt-4 text-center">
           <span class="flex size-14 items-center justify-center rounded-full bg-accent">${icon("headphones", "size-6 text-accent-foreground")}</span>
           <div class="max-w-xs space-y-3">
             <p class="font-serif text-2xl leading-snug text-balance">Listen for how she thinks, not what she knows.</p>
             <p class="text-sm leading-relaxed text-muted-foreground">About ${Math.round(EPISODE_LENGTH / 60)} minutes. No notes or prep needed — the psychologist will ask what stayed with you.</p>
           </div>
-          <div class="w-full max-w-xs rounded-xl border bg-card/70 p-4 text-left">
+          ${button({ size: "lg", className: "h-11 w-full max-w-xs gap-2 rounded-full", attrs: `data-action="goto" data-step="psychologist"${state.episodeListened ? "" : " disabled"}`, content: "Continue to first interview" + icon("arrow-right", "size-4") })}
+          ${!state.episodeListened ? `<p class="-mt-2 text-xs text-muted-foreground">Unlocks after listening (${fmt(EPISODE_LENGTH)})</p>` : ""}
+          <div class="w-full max-w-md overflow-hidden rounded-2xl text-left shadow-lg">${podcastPlayer()}</div>
+          <div class="w-full max-w-md rounded-xl border bg-card/70 p-4 text-left">
             <p class="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${icon("ear", "size-3.5 text-brass")}Listen for what you share</p>
             <ul class="flex flex-wrap gap-1.5">${[...c.values, ...c.personality].map((i) => chip(i, true)).join("")}</ul>
           </div>
-          ${button({ size: "lg", className: "h-11 w-full max-w-xs gap-2 rounded-full", attrs: `data-action="goto" data-step="psychologist"${state.episodeListened ? "" : " disabled"}`, content: "Continue to first interview" + icon("arrow-right", "size-4") })}
-          ${!state.episodeListened ? `<p class="text-xs text-muted-foreground">Unlocks after listening (${fmt(EPISODE_LENGTH)})</p>` : ""}
         </div>`,
-        profileCard(MATCH, { label: "Your match", highlight: c.highlight, footer: podcastPlayer() })
+        profileCard(MATCH, { label: "Your match", highlight: c.highlight })
       )}</div>`;
   }
 
