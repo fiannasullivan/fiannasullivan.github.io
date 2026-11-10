@@ -408,7 +408,7 @@
           <span class="flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground">${icon("lock", "size-3")}Private invitation · KTZ-0417</span>
           <label class="flex items-center gap-2 text-xs text-muted-foreground"><span>Prototype</span>
             <select id="step-select" class="rounded-md border bg-card px-2 py-1 text-xs text-foreground">${
-              STEPS.map((s, i) => `<option value="${s}"${s === state.step ? " selected" : ""}>${i + 1}. ${esc(STEP_LABELS[s])}</option>`).join("")
+              STEPS.map((s, i) => `<option value="${s}"${s === state.step ? " selected" : ""}>${i}. ${esc(STEP_LABELS[s])}</option>`).join("")
             }</select></label>
         </div></div></header>
       <main class="flex flex-1 flex-col"><div class="${cx("mx-auto w-full max-w-7xl flex-1 px-8 py-10", anim("animate-in fade-in duration-500"))}">
