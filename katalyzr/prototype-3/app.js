@@ -68,7 +68,7 @@
     "Found someone you should meet.",
   ];
   const HOW_IT_WORKS = [
-    { title: "Build your card", body: "Tell us how you think and work. Not a résumé.", icon: "id-card" },
+    { title: "Build your card", body: "Tell us how you think and work. Not a résumé.", icon: "profile-card" },
     { title: "Meet your match", body: "One hiring manager, chosen by hand for shared mindset.", icon: "hiring-manager" },
     { title: "Two conversations", body: "A psychologist, then the hiring manager. That’s the whole process.", icon: "messages-square" },
   ];
@@ -224,7 +224,8 @@
     bot: '<path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>',
     // Custom: hiring manager — a person holding a clipboard (drawn in the Lucide style)
     "hiring-manager": '<circle cx="8" cy="6" r="3.5"/><path d="M2 21v-1.5A5.5 5.5 0 0 1 7.5 14H11"/><rect x="13" y="11" width="8" height="10.5" rx="1.5"/><path d="M15.5 10.5h3"/><path d="M15.5 15h3"/><path d="M15.5 18h3"/>',
-    "id-card": '<path d="M13 19a4 4 0 0 0-8 0"/><path d="M16 10h2"/><path d="M16 14h2"/><circle cx="9" cy="12" r="3"/><rect x="2" y="5" width="20" height="14" rx="2"/>',
+    // Custom: profile card — a 16:9 sheet of paper (folded corner) with a person in the middle
+    "profile-card": '<path d="M4 6.375h13.5L22 10.875v4.75a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7.25a2 2 0 0 1 2-2z"/><path d="M17.5 6.375v3a1.5 1.5 0 0 0 1.5 1.5h3"/><circle cx="12" cy="10.4" r="2.1"/><path d="M8.6 15.6a3.4 3.4 0 0 1 6.8 0"/>',
     "messages-square": '<path d="M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1"/>',
     "mail-open": '<path d="M21.2 8.4c.5.38.8.97.8 1.6v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V10a2 2 0 0 1 .8-1.6l8-6a2 2 0 0 1 2.4 0l8 6Z"/><path d="m22 10-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 10"/>',
     "user-round": '<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>',
@@ -252,7 +253,7 @@
   const iconTile = (name, size = "size-10") =>
     `<span class="${cx("flex shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground", size)}">${icon(name, "size-5")}</span>`;
   // Icon shown next to each page's eyebrow label
-  const STEP_ICONS = { build: "id-card", waiting: "search", match: "handshake", episode: "headphones", psychologist: "brain", "hiring-manager": "hiring-manager", complete: "party-popper" };
+  const STEP_ICONS = { build: "profile-card", waiting: "search", match: "handshake", episode: "headphones", psychologist: "brain", "hiring-manager": "hiring-manager", complete: "party-popper" };
   function pageHeading({ eyebrow, title, description }) {
     const ic = STEP_ICONS[state.step];
     return `<div class="mb-8 max-w-2xl">
