@@ -68,9 +68,9 @@
     "Found someone you should meet.",
   ];
   const HOW_IT_WORKS = [
-    { title: "Build your card", body: "Tell us how you think and work. Not a résumé." },
-    { title: "Meet your match", body: "One hiring manager, chosen by hand for shared mindset." },
-    { title: "Two conversations", body: "A psychologist, then the hiring manager. That’s the whole process." },
+    { title: "Build your card", body: "Tell us how you think and work. Not a résumé.", icon: "id-card" },
+    { title: "Meet your match", body: "One hiring manager, chosen by hand for shared mindset.", icon: "hiring-manager" },
+    { title: "Two conversations", body: "A psychologist, then the hiring manager. That’s the whole process.", icon: "messages-square" },
   ];
   const firstName = (n) => n.split(" ")[0];
   const INTERVIEWS = {
@@ -222,6 +222,24 @@
     "mic-off": '<path d="M12 19v3"/><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"/><path d="M16.95 16.95A7 7 0 0 1 5 12v-2"/><path d="M18.89 13.23A7 7 0 0 0 19 12v-2"/><path d="m2 2 20 20"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12"/>',
     "phone-off": '<path d="M10.1 13.9a14 14 0 0 0 3.732 2.668 1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2 18 18 0 0 1-12.728-5.272"/><path d="M22 2 2 22"/><path d="M4.76 13.582A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 .244.473"/>',
     bot: '<path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>',
+    // Custom: hiring manager — a person holding a clipboard (drawn in the Lucide style)
+    "hiring-manager": '<circle cx="8" cy="6" r="3.5"/><path d="M2 21v-1.5A5.5 5.5 0 0 1 7.5 14H11"/><rect x="13" y="11" width="8" height="10.5" rx="1.5"/><path d="M15.5 10.5h3"/><path d="M15.5 15h3"/><path d="M15.5 18h3"/>',
+    "id-card": '<path d="M13 19a4 4 0 0 0-8 0"/><path d="M16 10h2"/><path d="M16 14h2"/><circle cx="9" cy="12" r="3"/><rect x="2" y="5" width="20" height="14" rx="2"/>',
+    "messages-square": '<path d="M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1"/>',
+    "mail-open": '<path d="M21.2 8.4c.5.38.8.97.8 1.6v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V10a2 2 0 0 1 .8-1.6l8-6a2 2 0 0 1 2.4 0l8 6Z"/><path d="m22 10-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 10"/>',
+    "user-round": '<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>',
+    "briefcase-business": '<path d="M12 12h.01"/><path d="M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><path d="M22 13a18.15 18.15 0 0 1-20 0"/><rect width="20" height="14" x="2" y="6" rx="2"/>',
+    compass: '<circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/>',
+    lightbulb: '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>',
+    search: '<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>',
+    handshake: '<path d="m11 17 2 2a1 1 0 1 0 3-3"/><path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4"/><path d="m21 3 1 11h-2"/><path d="M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3"/><path d="M3 4h8"/>',
+    brain: '<path d="M12 18V5"/><path d="M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4"/><path d="M17.707 6.294A3 3 0 1 0 12 5a3 3 0 1 0-5.707 1.294"/><path d="M17.996 5.125a4 4 0 0 1 2.526 5.77"/><path d="M18 18a4 4 0 0 0 2-7.465"/><path d="M19.967 17.482a4 4 0 1 1-7.967.517 4 4 0 1 1-7.967-.517"/><path d="M6 18a4 4 0 0 1-2-7.465"/><path d="M6.004 5.125a4 4 0 0 0-2.526 5.77"/>',
+    "party-popper": '<path d="M5.8 11.3 2 22l10.7-3.79"/><path d="M4 3h.01"/><path d="M22 8h.01"/><path d="M15 2h.01"/><path d="M22 20h.01"/><path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10"/><path d="m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11c-.11.7-.72 1.22-1.43 1.22H17"/><path d="m11 2 .33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7"/><path d="M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z"/>',
+    puzzle: '<path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"/>',
+    heart: '<path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/>',
+    smile: '<path d="M15 10V9"/><path d="M16.472 15a6 6 0 0 1-8.943 0"/><path d="M9 10V9"/><circle cx="12" cy="12" r="10"/>',
+    ear: '<path d="M6 8.5a6.5 6.5 0 1 1 13 0c0 6-6 6-6 10a3.5 3.5 0 1 1-7 0"/><path d="M15 8.5a2.5 2.5 0 0 0-5 0v1a2 2 0 1 1 0 4"/>',
+    "list-checks": '<path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/>',
   };
   const icon = (name, cls = "") =>
     `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="${cx("lucide lucide-" + name, cls)}" aria-hidden="true">${ICONS[name]}</svg>`;
@@ -230,9 +248,15 @@
   const CSG_MARK = '<svg class="csg-logo" viewBox="12 12 83 87" fill="currentColor" aria-hidden="true"><path d="M88.2294 76.422C86.4259 79.2256 84.2551 81.809 81.8027 84.069C80.234 80.7079 78.0577 77.7398 75.4471 75.2555C80.2773 70.3397 83.2049 63.9559 83.7422 57.0278L83.9213 54.7017L59.9854 54.6862C57.598 54.6834 55.6612 56.619 55.6584 59.0055L79.1427 59.0191C78.2633 64.1478 75.806 68.8205 72.0791 72.5001C67.2981 69.1411 61.5248 67.1907 55.4034 67.1526C48.6359 67.1526 43.186 61.3902 43.706 54.5139C44.0898 49.4396 47.8171 45.0835 52.7859 43.9783C55.9592 43.2733 59.1355 43.8831 61.708 45.5265C63.5883 46.7292 66.0274 46.5821 67.741 45.1535C63.8531 40.4857 57.6524 38.3455 51.5044 39.8369C45.191 41.3693 40.3781 46.7428 39.5034 53.1808C38.1723 62.959 45.715 71.3633 55.2155 71.4722V71.4741C65.903 71.4741 75.413 78.2598 78.8821 88.3638L79.8724 91.2513L82.2662 89.3563C87.221 85.4369 91.3334 80.3844 94.1523 74.7475C92.04 73.6916 89.5068 74.438 88.2294 76.422Z"/><path d="M54.4907 79.7455C40.4509 79.7455 29.0742 68.1162 29.488 53.9838C29.8451 41.7951 39.1696 31.4652 51.263 29.9216C58.5299 28.9926 65.63 31.2373 70.9516 35.8953C72.6876 37.4173 75.2688 37.4466 77.041 35.9698C70.4966 28.1103 60.3701 24.1708 50.0312 25.7277C36.2015 27.81 25.6815 39.6703 25.1752 53.6449C24.5717 70.3153 37.9555 84.0676 54.4907 84.0676C59.9719 84.0676 64.5929 87.7745 65.8696 92.9355C62.5044 93.8674 59.0186 94.3369 55.4829 94.3369C33.5909 94.3369 15.8646 76.1607 16.6037 54.1055C17.2679 34.2388 33.148 17.8438 52.9875 16.6096C67.3935 15.7141 80.6913 22.6196 88.2456 34.4562C89.5111 36.4402 92.0478 37.1748 94.1524 36.1239C86.6114 21.0537 71.3056 11.815 54.4072 12.2241C31.0954 12.7872 12.2433 32.1453 12.259 55.462C12.2726 79.285 31.6581 98.659 55.4829 98.659C60.1012 98.659 64.6446 97.9352 68.9914 96.5049L70.6324 95.9643L70.4673 94.2444C69.672 85.9778 62.8025 79.7455 54.4907 79.7455Z"/></svg>';
 
   /* ---------- Shared components ---------- */
+  // Round pink tile holding an icon (used in lists and section headings)
+  const iconTile = (name, size = "size-10") =>
+    `<span class="${cx("flex shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground", size)}">${icon(name, "size-5")}</span>`;
+  // Icon shown next to each page's eyebrow label
+  const STEP_ICONS = { build: "id-card", waiting: "search", match: "handshake", episode: "headphones", psychologist: "brain", "hiring-manager": "hiring-manager", complete: "party-popper" };
   function pageHeading({ eyebrow, title, description }) {
+    const ic = STEP_ICONS[state.step];
     return `<div class="mb-8 max-w-2xl">
-      <p class="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">${esc(eyebrow)}</p>
+      <p class="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">${ic ? icon(ic, "size-4") : ""}${esc(eyebrow)}</p>
       <h1 class="font-serif text-5xl leading-[1.05] text-balance">${title}</h1>
       ${description ? `<p class="mt-3 text-base leading-relaxed text-muted-foreground text-pretty">${esc(description)}</p>` : ""}
     </div>`;
@@ -251,10 +275,12 @@
   function chip(label, isShared) {
     return `<li class="${cx("rounded-full border px-2.5 py-0.5 text-xs transition-colors", isShared ? "border-brass/60 bg-accent text-accent-foreground" : "bg-secondary/60 text-secondary-foreground")}">${isShared ? '<span class="sr-only">Shared: </span>' : ""}${esc(label)}</li>`;
   }
+  const TRAIT_ICONS = { "Key skills": "puzzle", Values: "heart", "Working style": "compass", Personality: "smile", Mindset: "lightbulb" };
+  const labelIcon = (title) => (TRAIT_ICONS[title] ? icon(TRAIT_ICONS[title], "size-3.5 text-brass") : "");
   function traitList(title, items, highlight, editing) {
     if (items.length === 0 && !editing) return "";
     return `<div>
-      <p class="mb-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${esc(title)}</p>
+      <p class="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${labelIcon(title)}${esc(title)}</p>
       <ul class="flex flex-wrap gap-1.5">${
         items.length === 0 ? '<li class="rounded-full border border-dashed px-2.5 py-0.5 text-xs text-muted-foreground/70">Not added yet</li>'
           : items.map((i) => chip(i, highlight && highlight.has(i.toLowerCase()))).join("")
@@ -291,7 +317,7 @@
         ${traitList("Working style", p.workingStyle, highlight, editing)}
         ${traitList("Personality", p.personality, highlight, editing)}
         <div>
-          <p class="mb-1 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Mindset</p>
+          <p class="mb-1 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${labelIcon("Mindset")}Mindset</p>
           <blockquote class="${cx("border-l-2 border-brass pl-3 font-serif text-lg italic leading-snug text-pretty", !p.mindset && "text-muted-foreground/60")}">${p.mindset ? `“${esc(p.mindset)}”` : "The belief that drives how you work"}</blockquote>
         </div>
       </div>
@@ -301,8 +327,8 @@
   function connectionPanel(c, children) {
     const traits = [...c.workingStyle, ...c.personality];
     const circ = 2 * Math.PI * 44;
-    const box = (title, items) => `<div class="rounded-xl border bg-card/70 p-3">
-      <p class="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${esc(title)} · ${items.length}</p>
+    const box = (title, items, ic) => `<div class="rounded-xl border bg-card/70 p-3">
+      <p class="mb-2 flex items-center justify-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${icon(ic, "size-3.5 text-brass")}${esc(title)} · ${items.length}</p>
       ${items.length > 0 ? `<ul class="flex flex-wrap justify-center gap-1.5">${items.map((i) => chip(i, true)).join("")}</ul>`
         : '<p class="text-xs text-muted-foreground">Complementary rather than shared</p>'}</div>`;
     return `<section aria-labelledby="connection-heading" class="relative flex h-full flex-col items-center px-2 pt-10 text-center">
@@ -324,7 +350,7 @@
         </div>
       </div>
       <div class="mt-8 flex w-full max-w-xs flex-col gap-5">
-        ${box("Overlapping skills", c.skills)}${box("Matching values", c.values)}${box("Personality fit", traits)}
+        ${box("Overlapping skills", c.skills, "puzzle")}${box("Matching values", c.values, "heart")}${box("Personality fit", traits, "smile")}
       </div>
       ${children ? `<div class="mt-8 w-full max-w-xs">${children}</div>` : ""}
     </section>`;
@@ -396,7 +422,7 @@
   function welcomeScreen() {
     return `<div class="grid grid-cols-[1.1fr_1fr] items-center gap-16 py-6">
       <section aria-labelledby="welcome-heading">
-        <p class="mb-4 text-xs font-medium uppercase tracking-[0.18em] text-primary">A personal invitation</p>
+        <p class="mb-4 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">${icon("mail-open", "size-4")}A personal invitation</p>
         <h1 id="welcome-heading" class="font-serif text-7xl leading-[1] text-balance">Jordan, someone wants to <em class="text-primary">meet you</em>.</h1>
         <div class="mt-8 max-w-xl space-y-4 text-lg leading-relaxed text-pretty">
           <p>We came across your work on LinkedIn and kept coming back to it. Katalyzr is invite-only: we introduce a very small number of people to hiring managers who share how they see the world.</p>
@@ -419,8 +445,9 @@
             <div class="mt-2 flex gap-1.5"><span class="h-4 w-16 rounded-full bg-accent"></span><span class="h-4 w-10 rounded-full bg-secondary"></span></div>
           </div>
         </div>
-        <ol class="flex flex-col gap-3">${HOW_IT_WORKS.map((h, i) => `<li class="flex gap-4 rounded-xl border bg-card/70 p-4">
+        <ol class="flex flex-col gap-3">${HOW_IT_WORKS.map((h, i) => `<li class="flex items-center gap-4 rounded-xl border bg-card/70 p-4">
           <span class="font-serif text-3xl leading-none text-brass">${i + 1}</span>
+          ${iconTile(h.icon)}
           <div><p class="font-medium">${esc(h.title)}</p><p class="text-sm text-muted-foreground">${esc(h.body)}</p></div></li>`).join("")}</ol>
       </aside>
     </div>`;
@@ -466,7 +493,7 @@
     const groups = chipGroups();
     const picker = (key) => chipPicker({ key, ...groups[key], invalid: err(groups[key].invalid) });
     const field = (label, id, input) => `<div class="flex flex-col gap-1.5"><label for="${id}" class="text-sm font-medium">${esc(label)}</label>${input}</div>`;
-    const section = (title, body) => `<section class="flex flex-col gap-5"><h2 class="font-serif text-2xl">${esc(title)}</h2>${body}</section>`;
+    const section = (title, body, ic) => `<section class="flex flex-col gap-5"><h2 class="flex items-center gap-3 font-serif text-2xl">${iconTile(ic)}${esc(title)}</h2>${body}</section>`;
     return `<div>
       <div class="flex items-end justify-between">
         ${pageHeading({ eyebrow: "Step 1 · Build your card", title: "This is how you’ll be introduced.", description: "Your card is what your match sees first. Keep it honest and specific — it updates as you type." })}
@@ -493,15 +520,15 @@
             <div class="grid grid-cols-2 gap-4">
               ${field("Full name", "f-name", `<input id="f-name" data-field="name" class="${cx(INPUT, err(!a.name.trim()) && INVALID)}" value="${esc(a.name)}" autocomplete="name">`)}
               ${field("Current role", "f-role", `<input id="f-role" data-field="role" class="${cx(INPUT, err(!a.role.trim()) && INVALID)}" value="${esc(a.role)}" autocomplete="organization-title">`)}
-            </div>`)}
+            </div>`, "user-round")}
           ${section("Experience", `
             <div class="grid grid-cols-[120px_minmax(0,1fr)] gap-4">
               ${field("Years", "f-years", `<input id="f-years" data-field="experienceYears" type="number" min="0" max="60" inputmode="numeric" class="${cx(INPUT, err(!a.experienceYears.trim()) && INVALID)}" value="${esc(a.experienceYears)}">`)}
               ${field("In one sentence, what have you built?", "f-exp", `<input id="f-exp" data-field="experience" maxlength="140" class="${cx(INPUT, err(!a.experience.trim()) && INVALID)}" value="${esc(a.experience)}">`)}
             </div>
-            ${picker("tech")}${picker("personal")}`)}
-          ${section("How you work", picker("values") + picker("workingStyle") + picker("personality"))}
-          ${section("Mindset", field("The belief that drives how you work", "f-mindset", `<textarea id="f-mindset" data-field="mindset" rows="2" maxlength="100" class="${cx(INPUT, "resize-none font-serif text-lg italic", err(!a.mindset.trim()) && INVALID)}">${esc(a.mindset)}</textarea>`))}
+            ${picker("tech")}${picker("personal")}`, "briefcase-business")}
+          ${section("How you work", picker("values") + picker("workingStyle") + picker("personality"), "compass")}
+          ${section("Mindset", field("The belief that drives how you work", "f-mindset", `<textarea id="f-mindset" data-field="mindset" rows="2" maxlength="100" class="${cx(INPUT, "resize-none font-serif text-lg italic", err(!a.mindset.trim()) && INVALID)}">${esc(a.mindset)}</textarea>`), "lightbulb")}
           <div class="flex items-center justify-between border-t pt-6">
             <p class="text-sm text-muted-foreground">${ready ? "Your card is ready." : "Complete every section to find your match."}</p>
             <button type="submit" data-slot="button" class="${merge(cx(BTN_BASE, BTN_VARIANT.default, BTN_SIZE.lg, "csg-cta h-11 gap-2 rounded-full px-5"))}">Find my match${icon("arrow-right", "size-4")}</button>
@@ -623,7 +650,7 @@
             <p class="text-sm leading-relaxed text-muted-foreground">About ${Math.round(EPISODE_LENGTH / 60)} minutes. No notes or prep needed — the psychologist will ask what stayed with you.</p>
           </div>
           <div class="w-full max-w-xs rounded-xl border bg-card/70 p-4 text-left">
-            <p class="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Listen for what you share</p>
+            <p class="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${icon("ear", "size-3.5 text-brass")}Listen for what you share</p>
             <ul class="flex flex-wrap gap-1.5">${[...c.values, ...c.personality].map((i) => chip(i, true)).join("")}</ul>
           </div>
           ${button({ size: "lg", className: "h-11 w-full max-w-xs gap-2 rounded-full", attrs: `data-action="goto" data-step="psychologist"${state.episodeListened ? "" : " disabled"}`, content: "Continue to first interview" + icon("arrow-right", "size-4") })}
@@ -669,10 +696,10 @@
           ${profileCard(a, { label: "You", variant: "compact" })}
           ${profileCard(MATCH, { label: "Your match", variant: "compact" })}
           <div class="mt-2 rounded-xl border bg-card/70 p-4">
-            <p class="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">What you'll cover</p>
+            <p class="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${icon("list-checks", "size-3.5 text-brass")}What you'll cover</p>
             <ol class="flex flex-col gap-2 text-sm">${cfg.agenda.map((x, i) => `<li class="flex gap-2"><span class="font-serif text-brass">${i + 1}.</span>${esc(x)}</li>`).join("")}</ol>
           </div>
-          <p class="px-1 text-xs text-muted-foreground">${hl.size} shared traits on your cards</p>
+          <p class="flex items-center gap-1.5 px-1 text-xs text-muted-foreground">${icon("sparkles", "size-3.5 text-brass")}${hl.size} shared traits on your cards</p>
         </aside>
         ${state.call.joined ? videoCall(cfg) : `<section aria-label="Join the call" class="flex aspect-video flex-col items-center justify-center gap-6 rounded-2xl border bg-card p-10 text-center">
           <div class="flex items-center -space-x-4">
@@ -691,7 +718,7 @@
     const c = connection(state.applicant, MATCH);
     return `<div>
       <div class="mb-10 flex flex-col items-center text-center">
-        <p class="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">Introduction complete</p>
+        <p class="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">${icon("party-popper", "size-4")}Introduction complete</p>
         <h1 class="max-w-3xl font-serif text-6xl leading-[1.05] text-balance">That's it. You've been introduced.</h1>
         <p class="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground text-pretty">${esc(firstName(MATCH.name))} and you now have each other's details. Whatever happens next is between the two of you — Marcus is around if you'd like a sounding board.</p>
         ${goBetween(false, "mt-6")}
