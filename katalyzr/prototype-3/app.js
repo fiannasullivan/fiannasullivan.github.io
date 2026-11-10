@@ -128,6 +128,9 @@
     showErrors: false,
     chipDrafts: {},
     flipped: false, // step 2: has the match card been flipped over?
+    modal: null, // welcome: "how" (How did you find me?) or "optout" (confirm opt-out)
+    optedOut: false, // welcome: applicant declined the invitation
+    optOutReason: "",
     player: { time: 0, playing: false, speed: 1, chaptersOpen: false },
     call: { joined: false, seconds: 0, mic: true, cam: true, captions: true },
   };
@@ -145,6 +148,7 @@
     state.showErrors = false;
     state.chipDrafts = {};
     state.flipped = false;
+    state.modal = null;
     state.player = { time: 0, playing: false, speed: 1, chaptersOpen: false };
     state.call = { joined: false, seconds: 0, mic: true, cam: true, captions: true };
     clearTimers();
@@ -153,7 +157,7 @@
     startStepTimers();
   }
   function updateApplicant(patch) { state.applicant = { ...state.applicant, ...patch }; render(); }
-  function restart() { state.applicant = { ...EMPTY_APPLICANT }; goTo("welcome"); }
+  function restart() { state.applicant = { ...EMPTY_APPLICANT }; state.optedOut = false; state.optOutReason = ""; goTo("welcome"); }
 
   /* ---------- Helpers ---------- */
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -232,6 +236,12 @@
     heart: '<path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/>',
     smile: '<path d="M15 10V9"/><path d="M16.472 15a6 6 0 0 1-8.943 0"/><path d="M9 10V9"/><circle cx="12" cy="12" r="10"/>',
     ear: '<path d="M6 8.5a6.5 6.5 0 1 1 13 0c0 6-6 6-6 10a3.5 3.5 0 1 1-7 0"/><path d="M15 8.5a2.5 2.5 0 0 0-5 0v1a2 2 0 1 1 0 4"/>',
+    x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+    "shield-check": '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+    eye: '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
+    "circle-help": '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
+    "circle-check": '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+    "log-out": '<path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>',
     "list-checks": '<path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/>',
   };
   const icon = (name, cls = "") =>
@@ -421,11 +431,15 @@
           <p>We came across your work on LinkedIn and kept coming back to it. Katalyzr is invite-only: we introduce a very small number of people to hiring managers who share how they see the world.</p>
           <p class="text-muted-foreground">There are no application forms and no interview gauntlet. Just two conversations.</p>
         </div>
+        <button type="button" data-action="modal" data-modal="how" class="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary underline decoration-primary/40 underline-offset-4 hover:decoration-primary">${icon("circle-help", "size-4")}How did you find me?</button>
         <div class="mt-8 flex items-center gap-3">
           <div class="flex size-10 items-center justify-center rounded-full bg-primary font-serif text-lg text-primary-foreground">PN</div>
           <div><p class="font-serif text-xl italic leading-tight">Priya Natarajan</p><p class="text-xs text-muted-foreground">Partner, Culminate Strategy Group</p></div>
         </div>
-        ${button({ size: "lg", className: "csg-cta mt-10 h-12 gap-2 rounded-full px-6 text-base", attrs: 'data-action="goto" data-step="build"', content: "Accept invitation" + icon("arrow-right", "size-4") })}
+        <div class="mt-10 flex items-center gap-6">
+          ${button({ size: "lg", className: "csg-cta h-12 gap-2 rounded-full px-6 text-base", attrs: 'data-action="goto" data-step="build"', content: "Accept invitation" + icon("arrow-right", "size-4") })}
+          <button type="button" data-action="modal" data-modal="optout" class="text-sm text-muted-foreground underline decoration-dotted underline-offset-4 hover:text-foreground">Not interested? Opt out</button>
+        </div>
       </section>
       <aside aria-label="How it works" class="flex flex-col gap-8">
         <div class="relative mx-auto h-72 w-full max-w-md" aria-hidden="true">
@@ -444,6 +458,57 @@
           <div><p class="font-medium">${esc(h.title)}</p><p class="text-sm text-muted-foreground">${esc(h.body)}</p></div></li>`).join("")}</ol>
       </aside>
     </div>`;
+  }
+
+  // Shown instead of the welcome page after the applicant opts out
+  function optedOutScreen() {
+    return `<section class="mx-auto flex max-w-xl flex-col items-center py-16 text-center">
+      ${iconTile("circle-check", "size-16")}
+      <p class="mt-6 mb-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">Invitation declined</p>
+      <h1 class="font-serif text-5xl leading-[1.05] text-balance">You’ve opted out.</h1>
+      <p class="mt-4 text-base leading-relaxed text-muted-foreground text-pretty">Thanks for letting us know, Jordan. We won’t contact you about Katalyzr again, and your details won’t be shared with any hiring manager. We’ll also remove the LinkedIn profile details we used to invite you.</p>
+      <p class="mt-3 text-sm text-muted-foreground">Questions? Reach out to Culminate Strategy Group any time.</p>
+      <div class="mt-8 flex items-center gap-4">
+        ${button({ variant: "outline", className: "h-11 gap-2 rounded-full px-5", attrs: 'data-action="undo-optout"', content: icon("rotate-ccw", "size-4") + "Changed your mind? Undo" })}
+      </div>
+    </section>`;
+  }
+
+  function modal() {
+    if (!state.modal) return "";
+    const close = `<button type="button" data-action="close-modal" class="k-modal-close rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-foreground" aria-label="Close">${icon("x", "size-5")}</button>`;
+    let body = "";
+    if (state.modal === "how") {
+      const item = (ic, title, text) => `<li class="flex gap-4">${iconTile(ic)}<div><p class="font-medium">${title}</p><p class="mt-1 text-sm leading-relaxed text-muted-foreground">${text}</p></div></li>`;
+      body = `<p class="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">About your invitation</p>
+        <h2 id="modal-title" class="font-serif text-3xl leading-tight">How did we find you?</h2>
+        <p class="mt-3 text-base leading-relaxed text-muted-foreground">A fair question — you never applied. Here’s exactly how it worked.</p>
+        <ol class="mt-6 flex flex-col gap-5">
+          ${item("shield-check", "Through LinkedIn’s official API", "Culminate Strategy Group finds people using LinkedIn’s approved APIs, within LinkedIn’s terms of service. We don’t scrape LinkedIn or buy contact lists.")}
+          ${item("eye", "Only your professional profile", "We looked at the professional details on your LinkedIn profile, like your current role, work history and skills. Nothing private: not your messages or your connections.")}
+          ${item("hiring-manager", "Chosen by a person, not an algorithm", "Someone at CSG read your profile alongside a hiring manager they’ve already interviewed on the Uncommon Operator podcast, and thought you two see work the same way.")}
+          ${item("sparkles", "Why so few invitations", "Katalyzr is invite-only. We introduce a very small number of people, so this isn’t a mass message — it was sent to you specifically.")}
+          ${item("circle-check", "Your choice, every step", "Nothing happens unless you accept. You can opt out now or at any point, and we’ll stop contacting you and remove the details we used.")}
+        </ol>
+        <div class="mt-8 flex items-center justify-between border-t pt-5">
+          <button type="button" data-action="modal" data-modal="optout" class="text-sm text-muted-foreground underline decoration-dotted underline-offset-4 hover:text-foreground">I’d rather opt out</button>
+          ${button({ size: "lg", className: "csg-cta h-11 gap-2 rounded-full px-5", attrs: 'data-action="close-modal"', content: "Got it" })}
+        </div>`;
+    } else if (state.modal === "optout") {
+      const reasons = ["I’m not looking for a new role right now", "I don’t want to be contacted", "This isn’t the right fit for me", "Something else"];
+      body = `<p class="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">Opt out</p>
+        <h2 id="modal-title" class="font-serif text-3xl leading-tight">Opt out of Katalyzr?</h2>
+        <p class="mt-3 text-base leading-relaxed text-muted-foreground">We’ll stop contacting you, won’t share your details with any hiring manager, and will remove the LinkedIn profile details we used to invite you.</p>
+        <fieldset class="mt-6"><legend class="mb-3 text-sm font-medium">Mind telling us why? <span class="font-normal text-muted-foreground">(optional)</span></legend>
+          <div class="flex flex-col gap-2">${reasons.map((r, i) => `<label class="k-radio flex cursor-pointer items-center gap-3 rounded-lg border bg-card px-4 py-3 text-sm hover:bg-secondary"><input type="radio" name="optout-reason" id="optout-reason-${i}" value="${esc(r)}"${state.optOutReason === r ? " checked" : ""}>${esc(r)}</label>`).join("")}</div>
+        </fieldset>
+        <div class="mt-8 flex items-center justify-end gap-3 border-t pt-5">
+          ${button({ variant: "outline", className: "h-11 rounded-full px-5", attrs: 'data-action="close-modal"', content: "Keep my invitation" })}
+          ${button({ size: "lg", className: "h-11 gap-2 rounded-full px-5", attrs: 'data-action="confirm-optout"', content: icon("log-out", "size-4") + "Opt out" })}
+        </div>`;
+    }
+    return `<div class="k-modal-backdrop" data-action="close-modal"></div>
+      <div class="k-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">${close}${body}</div>`;
   }
 
   const INPUT = "w-full rounded-lg border bg-card px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-3 focus:ring-primary/15";
@@ -735,7 +800,7 @@
 
   function screen() {
     switch (state.step) {
-      case "welcome": return welcomeScreen();
+      case "welcome": return state.optedOut ? optedOutScreen() : welcomeScreen();
       case "build": return buildScreen();
       case "waiting": return waitingScreen();
       case "match": return matchScreen();
@@ -754,7 +819,7 @@
     let selStart = null, selEnd = null;
     try { selStart = active.selectionStart; selEnd = active.selectionEnd; } catch (e) { /* not a text field */ }
     animate = withAnimation;
-    root.innerHTML = shell(screen());
+    root.innerHTML = shell(screen()) + modal();
     animate = false;
     if (focusId) {
       const el = document.getElementById(focusId);
@@ -798,6 +863,10 @@
     switch (action) {
       case "goto": return goTo(el.dataset.step);
       case "restart": return restart();
+      case "modal": state.modal = el.dataset.modal; render(); { const m = document.querySelector(".k-modal button, .k-modal input"); if (m) m.focus(); } return;
+      case "close-modal": state.modal = null; return render();
+      case "confirm-optout": state.optedOut = true; state.modal = null; render(true); return window.scrollTo({ top: 0, behavior: "smooth" });
+      case "undo-optout": state.optedOut = false; state.optOutReason = ""; return render(true);
       case "flip": {
         if (state.flipped) return;
         state.flipped = true;
@@ -834,7 +903,11 @@
   root.addEventListener("change", (e) => {
     const t = e.target;
     if (t.id === "step-select") return goTo(t.value);
+    if (t.name === "optout-reason") { state.optOutReason = t.value; return; }
     if (t.id === "f-photo" && t.files && t.files[0]) return updateApplicant({ photo: URL.createObjectURL(t.files[0]) });
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && state.modal) { state.modal = null; render(); }
   });
   root.addEventListener("keydown", (e) => {
     const t = e.target;
