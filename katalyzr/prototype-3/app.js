@@ -44,7 +44,7 @@
     personality: ["Direct", "Warm", "Calm under pressure"],
     mindset: "Build calm companies in chaotic markets.",
   };
-  const PSYCH = { name: "Dr. Marcus Hale", title: "Talent Psychologist, CSG", photo: "images/psychologist.jpg" };
+  const PSYCH = { name: "Dr. Marcus Hale", title: "Talent Psychologist, CSG", credentials: "PhD, organizational psychology", photo: "images/psychologist.jpg" };
   const PODCAST = "Uncommon Operator";
   const EPISODE_LENGTH = 3494;
   const CHAPTERS = [
@@ -63,7 +63,7 @@
   const HOW_IT_WORKS = [
     { title: "Build your card", body: "Tell us how you think and work. Not a résumé.", icon: "profile-card" },
     { title: "Meet your match", body: "One hiring manager, chosen by hand for shared mindset.", icon: "hiring-manager" },
-    { title: "Two conversations", body: "A psychologist, then the hiring manager. That’s the whole process.", icon: "messages-square" },
+    { title: "Two conversations", body: "First a psychologist, so you walk in already understood. Then the hiring manager. That’s it.", icon: "messages-square" },
   ];
   const firstName = (n) => n.split(" ")[0];
   const INTERVIEWS = {
@@ -132,7 +132,8 @@
     optedOut: false, // welcome: applicant declined the invitation
     optOutReason: "",
     player: { time: 0, playing: false, speed: 1, chaptersOpen: false },
-    call: { joined: false, seconds: 0, mic: true, cam: true, captions: true },
+    call: { joined: false, ended: false, seconds: 0, mic: true, cam: true, captions: true },
+    brief: { approved: false, editing: false, note: "", noteSent: false }, // step 5: the Mindset brief the applicant approves
   };
   let timers = [];
   const clearTimers = () => { timers.forEach((t) => clearInterval(t)); timers = []; };
@@ -150,14 +151,14 @@
     state.flipped = false;
     state.modal = null;
     state.player = { time: 0, playing: false, speed: 1, chaptersOpen: false };
-    state.call = { joined: false, seconds: 0, mic: true, cam: true, captions: true };
+    state.call = { joined: false, ended: false, seconds: 0, mic: true, cam: true, captions: true };
     clearTimers();
     render(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
     startStepTimers();
   }
   function updateApplicant(patch) { state.applicant = { ...state.applicant, ...patch }; render(); }
-  function restart() { state.applicant = { ...EMPTY_APPLICANT }; state.optedOut = false; state.optOutReason = ""; goTo("welcome"); }
+  function restart() { state.applicant = { ...EMPTY_APPLICANT }; state.optedOut = false; state.optOutReason = ""; state.brief = { approved: false, editing: false, note: "", noteSent: false }; goTo("welcome"); }
 
   /* ---------- Helpers ---------- */
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -361,7 +362,7 @@
   function goBetween(live, className) {
     return `<div class="${cx("inline-flex items-center gap-3 rounded-full border border-brass/50 bg-card py-1.5 pl-1.5 pr-4 shadow-sm", className)}">
       <div class="relative">${avatar(PSYCH, "size-10 rounded-full")}${live ? `<span class="absolute -right-0.5 -top-0.5 flex size-3"><span class="absolute inline-flex size-full animate-ping rounded-full bg-primary/60"></span><span class="relative inline-flex size-3 rounded-full border-2 border-card bg-primary"></span></span>` : ""}</div>
-      <div class="text-left"><p class="text-sm font-medium leading-tight">${esc(PSYCH.name)}</p><p class="text-xs text-muted-foreground">Your go-between · CSG</p></div>
+      <div class="text-left"><p class="text-sm font-medium leading-tight">${esc(PSYCH.name)}</p><p class="text-xs text-muted-foreground">Your advocate · CSG</p></div>
     </div>`;
   }
 
@@ -492,6 +493,22 @@
         </ol>
         <div class="mt-8 flex items-center justify-between border-t pt-5">
           <button type="button" data-action="modal" data-modal="optout" class="text-sm text-muted-foreground underline decoration-dotted underline-offset-4 hover:text-foreground">I’d rather opt out</button>
+          ${button({ size: "lg", className: "csg-cta h-11 gap-2 rounded-full px-5", attrs: 'data-action="close-modal"', content: "Got it" })}
+        </div>`;
+    } else if (state.modal === "why-psych") {
+      const item = (ic, title, text) => `<li class="flex gap-4">${iconTile(ic)}<div><p class="font-medium">${title}</p><p class="mt-1 text-sm leading-relaxed text-muted-foreground">${text}</p></div></li>`;
+      const hm = firstName(MATCH.name);
+      body = `<p class="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">About this conversation</p>
+        <h2 id="modal-title" class="font-serif text-3xl leading-tight">Why a psychologist first?</h2>
+        <p class="mt-3 text-base leading-relaxed text-muted-foreground">It’s a fair question. Marcus isn’t a gatekeeper — here’s what he’s actually there for.</p>
+        <ol class="mt-6 flex flex-col gap-5">
+          ${item("circle-check", "It’s not a test", "There’s no score and no pass or fail. You were already chosen — this conversation is about making the introduction go well.")}
+          ${item("shield-check", "He’s on your side", `Marcus works for the introduction, not for ${hm}. His job is to help you show up as yourself.`)}
+          ${item("brain", "He puts how you think into words", `A résumé shows what you’ve done, not how you think, and how you think is what ${hm} cares about most. Marcus helps translate it.`)}
+          ${item("messages-square", "Your first conversation with " + hm + " starts deeper", `Because Marcus already knows you both, you skip the screening questions and get straight to the real conversation.`)}
+          ${item("eye", "Private by default", `What you say stays between you and Marcus. The only thing ${hm} sees is a short Mindset brief that you read and approve first.`)}
+        </ol>
+        <div class="mt-8 flex items-center justify-end border-t pt-5">
           ${button({ size: "lg", className: "csg-cta h-11 gap-2 rounded-full px-5", attrs: 'data-action="close-modal"', content: "Got it" })}
         </div>`;
     } else if (state.modal === "optout") {
@@ -751,14 +768,68 @@
         ${callControl("toggle-mic", c.mic, c.mic ? "Mute" : "Unmute", icon(c.mic ? "mic" : "mic-off", "size-5"))}
         ${callControl("toggle-cam", c.cam, c.cam ? "Turn camera off" : "Turn camera on", icon(c.cam ? "video" : "video-off", "size-5"))}
         ${callControl("toggle-captions", c.captions, c.captions ? "Hide captions" : "Show captions", icon("captions", "size-5"))}
-        <button type="button" data-action="goto" data-step="${cfg.next}" class="ml-4 flex items-center gap-2 rounded-full bg-red-600 px-5 py-3 text-sm font-medium text-white hover:bg-red-700">${icon("phone-off", "size-4")}End call</button>
+        <button type="button" data-action="end-call" data-next="${cfg.next}" class="ml-4 flex items-center gap-2 rounded-full bg-red-600 px-5 py-3 text-sm font-medium text-white hover:bg-red-700">${icon("phone-off", "size-4")}End call</button>
       </div>
     </section>`;
   }
+  // Step 5 sidebar: who Dr. Hale is and what he does / doesn't do
+  function advocateCard() {
+    const row = (ok, text) => `<li class="flex items-start gap-2">${icon(ok ? "check" : "x", cx("mt-0.5 size-3.5 shrink-0", ok ? "text-primary" : "text-brass"))}${esc(text)}</li>`;
+    return `<div class="rounded-xl border bg-card p-4">
+      <p class="mb-3 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${icon("shield-check", "size-3.5 text-brass")}Meet your advocate</p>
+      <div class="flex items-center gap-3">${avatar(PSYCH, "size-12 rounded-full")}<div><p class="font-serif text-lg leading-tight">${esc(PSYCH.name)}</p><p class="text-xs text-muted-foreground">${esc(PSYCH.credentials)}</p></div></div>
+      <p class="mt-3 text-xs font-medium">He will</p>
+      <ul class="mt-1 flex flex-col gap-1 text-sm">${row(true, "Help put how you think into words")}${row(true, "Introduce you to Elena, then step back")}</ul>
+      <p class="mt-3 text-xs font-medium">He won’t</p>
+      <ul class="mt-1 flex flex-col gap-1 text-sm">${row(false, "Score or grade you")}${row(false, "Decide whether you move forward")}${row(false, "Share anything without your OK")}</ul>
+    </div>`;
+  }
+  // Step 5: what each side gets from the psychologist conversation
+  function whoBenefits() {
+    const col = (title, ic, items) => `<div class="rounded-xl border bg-card/70 p-4">
+      <p class="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${icon(ic, "size-3.5 text-brass")}${title}</p>
+      <ul class="flex flex-col gap-1.5 text-sm">${items.map((i) => `<li class="flex items-start gap-2">${icon("check", "mt-0.5 size-3.5 shrink-0 text-primary")}${esc(i)}</li>`).join("")}</ul></div>`;
+    return `<div class="mt-6 grid grid-cols-2 gap-4">
+      ${col("What you get", "user-round", ["Someone in your corner before the big conversation", "Your strengths put into words by an expert", "A say in exactly what Elena hears"])}
+      ${col(`What ${firstName(MATCH.name)} gets`, "hiring-manager", ["Confidence the fit is real, not just a strong résumé", "A head start on how you like to work", "A first conversation that starts deep, not with small talk"])}
+    </div>`;
+  }
+  // Step 5, after the call: the brief Marcus will share with Elena, which the applicant approves first
+  function mindsetBrief() {
+    const a = state.applicant, c = connection(a, MATCH), b = state.brief, first = firstName(a.name || "You");
+    const lower = (arr) => arr.map((x) => x.toLowerCase());
+    const join = (arr) => (arr.length <= 1 ? arr.join("") : arr.slice(0, -1).join(", ") + " and " + arr[arr.length - 1]);
+    const shared = [...c.values, ...c.workingStyle];
+    const points = [
+      { ic: "compass", title: `How ${first} works`, text: `Does their best work with ${join(lower(a.workingStyle))}. Comes across as ${join(lower(a.personality))}.` },
+      { ic: "lightbulb", title: "What drives them", text: a.mindset ? `“${a.mindset}” — ${first} came back to this idea several times in our conversation.` : "A clear sense of why they do the work they do." },
+      { ic: "handshake", title: `Where you two will click`, text: shared.length ? `You both care about ${join(lower(shared))}. Expect a conversation that gets specific fast.` : "Different strengths that complement each other well." },
+    ];
+    return `<section aria-label="Your Mindset brief" class="${cx("rounded-2xl border bg-card p-8", anim("animate-in fade-in duration-500"))}">
+      <p class="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">${icon("eye", "size-4")}Before ${esc(firstName(MATCH.name))} sees anything</p>
+      <h2 class="font-serif text-3xl leading-tight">Your Mindset brief</h2>
+      <p class="mt-2 max-w-2xl text-base leading-relaxed text-muted-foreground">Marcus wrote this from your conversation. It’s the only thing from the call he’ll share with ${esc(firstName(MATCH.name))}. Read it, then approve it or ask for a change.</p>
+      <div class="mt-6 rounded-xl border-l-4 border-brass bg-secondary/50 p-6">
+        <div class="mb-4 flex items-center justify-between text-xs text-muted-foreground"><span class="font-medium uppercase tracking-[0.14em]">Mindset brief · ${esc(a.name)}</span><span>Prepared by ${esc(PSYCH.name)}</span></div>
+        <ul class="flex flex-col gap-4">${points.map((p) => `<li class="flex gap-4">${iconTile(p.ic)}<div><p class="font-medium">${esc(p.title)}</p><p class="mt-0.5 text-sm leading-relaxed text-muted-foreground">${esc(p.text)}</p></div></li>`).join("")}</ul>
+      </div>
+      ${b.noteSent ? `<p class="mt-4 flex items-center gap-2 text-sm text-primary">${icon("check", "size-4")}Marcus has your note and will update the brief before sharing it.</p>` : ""}
+      ${b.editing ? `<div class="mt-6 flex flex-col gap-2"><label for="brief-note" class="text-sm font-medium">What should Marcus change?</label>
+        <textarea id="brief-note" rows="3" class="${INPUT} resize-none" placeholder="e.g. I’d describe myself as more collaborative than async-first.">${esc(b.note)}</textarea>
+        <div class="flex justify-end gap-3">${button({ variant: "outline", className: "h-10 rounded-full px-4", attrs: 'data-action="brief-cancel"', content: "Cancel" })}${button({ className: "h-10 rounded-full px-4", attrs: 'data-action="brief-send"', content: "Send to Marcus" })}</div></div>` : ""}
+      <div class="mt-6 flex items-center justify-between border-t pt-6">
+        ${b.approved
+          ? `<p class="flex items-center gap-2 text-sm font-medium text-primary">${icon("circle-check", "size-5")}Approved and shared with ${esc(firstName(MATCH.name))}.</p>${button({ size: "lg", className: "csg-cta h-11 gap-2 rounded-full px-5", attrs: 'data-action="goto" data-step="hiring-manager"', content: `Continue to meet ${esc(firstName(MATCH.name))}` + icon("arrow-right", "size-4") })}`
+          : `${b.editing ? "<span></span>" : `<button type="button" data-action="brief-edit" class="text-sm text-muted-foreground underline decoration-dotted underline-offset-4 hover:text-foreground">Suggest a change</button>`}${button({ size: "lg", className: "csg-cta h-11 gap-2 rounded-full px-5", attrs: 'data-action="brief-approve"', content: icon("check", "size-4") + (b.noteSent ? "Approve with my note" : `Approve & share with ${esc(firstName(MATCH.name))}`) })}`}
+      </div>
+    </section>`;
+  }
+
   function interviewScreen(kind) {
     const cfg = INTERVIEWS[kind], a = state.applicant, hl = connection(a, MATCH).highlight;
     return `<div>
       <div class="flex items-end justify-between">${pageHeading({ eyebrow: cfg.eyebrow, title: esc(cfg.title), description: cfg.description })}${goBetween(state.call.joined, "mb-8")}</div>
+      ${kind === "psychologist" ? `<button type="button" data-action="modal" data-modal="why-psych" class="-mt-4 mb-8 inline-flex items-center gap-2 text-sm font-medium text-primary underline decoration-primary/40 underline-offset-4 hover:decoration-primary">${icon("circle-help", "size-4")}Why talk to a psychologist first?</button>` : ""}
       <div class="grid grid-cols-[280px_minmax(0,1fr)] items-start gap-8">
         <aside aria-label="Who's here" class="flex flex-col gap-3">
           ${profileCard(a, { label: "You", variant: "compact" })}
@@ -768,8 +839,10 @@
             <ol class="flex flex-col gap-2 text-sm">${cfg.agenda.map((x, i) => `<li class="flex gap-2"><span class="font-serif text-brass">${i + 1}.</span>${esc(x)}</li>`).join("")}</ol>
           </div>
           <p class="flex items-center gap-1.5 px-1 text-xs text-muted-foreground">${icon("sparkles", "size-3.5 text-brass")}${hl.size} shared traits on your cards</p>
+          ${kind === "psychologist" ? advocateCard() : ""}
+          ${kind === "hiring-manager" && state.brief.approved ? `<p class="flex items-center gap-1.5 px-1 text-xs text-muted-foreground">${icon("circle-check", "size-3.5 text-primary")}${esc(firstName(MATCH.name))} has read your approved Mindset brief</p>` : ""}
         </aside>
-        ${state.call.joined ? videoCall(cfg) : `<section aria-label="Join the call" class="flex aspect-video flex-col items-center justify-center gap-6 rounded-2xl border bg-card p-10 text-center">
+        ${kind === "psychologist" && state.call.ended ? mindsetBrief() : state.call.joined ? videoCall(cfg) : `<div><section aria-label="Join the call" class="flex aspect-video flex-col items-center justify-center gap-6 rounded-2xl border bg-card p-10 text-center">
           <div class="flex items-center -space-x-4">
             ${avatar(a, "size-20 rounded-full border-4 border-card")}${avatar(cfg.remote, "size-20 rounded-full border-4 border-card")}${kind === "hiring-manager" ? avatar(PSYCH, "size-20 rounded-full border-4 border-card") : ""}
           </div>
@@ -778,7 +851,7 @@
             <p class="mt-2 font-serif text-3xl">${esc(cfg.remote.name)} is ready when you are.</p>
           </div>
           ${button({ size: "lg", className: "csg-cta h-12 gap-2 rounded-full px-6 text-base", attrs: 'data-action="join"', content: icon("video", "size-4") + "Join video call" })}
-        </section>`}
+        </section>${kind === "psychologist" ? whoBenefits() : ""}</div>`}
       </div></div>`;
   }
 
@@ -889,6 +962,13 @@
       case "chapter": p.time = Number(el.dataset.start); p.playing = true; return render();
       case "listened": state.episodeListened = true; return render();
       case "join": c.joined = true; render(true); return startCallTimer();
+      case "end-call":
+        if (state.step === "psychologist") { clearTimers(); c.joined = false; c.ended = true; render(true); return window.scrollTo({ top: 0, behavior: "smooth" }); }
+        return goTo(el.dataset.next);
+      case "brief-edit": state.brief.editing = true; render(); { const t = document.getElementById("brief-note"); if (t) t.focus(); } return;
+      case "brief-cancel": state.brief.editing = false; return render();
+      case "brief-send": if (!state.brief.note.trim()) return; state.brief.editing = false; state.brief.noteSent = true; return render();
+      case "brief-approve": state.brief.approved = true; state.brief.editing = false; return render();
       case "toggle-mic": c.mic = !c.mic; return render();
       case "toggle-cam": c.cam = !c.cam; return render();
       case "toggle-captions": c.captions = !c.captions; return render();
@@ -897,6 +977,7 @@
   root.addEventListener("input", (e) => {
     const t = e.target;
     if (t.dataset.field) return updateApplicant({ [t.dataset.field]: t.value });
+    if (t.id === "brief-note") { state.brief.note = t.value; return; }
     if (t.dataset.chipInput) { state.chipDrafts[t.dataset.chipInput] = t.value; return render(); }
     if (t.id === "episode-scrubber") return seek(Number(t.value));
   });
