@@ -57,6 +57,8 @@ h1 em.text-primary { color: var(--csg-coral-deep); }
 .csg-header .text-muted-foreground { color: rgba(255, 255, 255, 0.72); }
 .csg-header .bg-card { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.2); }
 .csg-header select { background: var(--csg-navy); color: #fff; border-color: rgba(255, 255, 255, 0.3); }
+/* The open dropdown list uses a white background on Windows, so the options need dark text */
+.csg-header select option { background: #fff; color: var(--csg-ink); }
 .csg-logo { height: 30px; width: auto; color: #fff; }
 
 /* Main calls to action get the coral pill from the CSG site */
