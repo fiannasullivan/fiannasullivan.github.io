@@ -111,7 +111,7 @@
       { label: "Key skills", done: a.skills.length >= 2 },
       { label: "Values", done: a.values.length >= 2 },
       { label: "Working style", done: a.workingStyle.length >= 1 },
-      { label: "Personality", done: a.personality.length >= 1 },
+      { label: "Personality", done: a.personality.length >= 3 },
       { label: "Mindset", done: !!a.mindset.trim() },
     ];
   }
@@ -559,7 +559,7 @@
       personal: { label: "Personal skills", hint: "up to 3", options: PERSONAL_SKILLS, selected: personal, max: 3, invalid: a.skills.length < 2, set: (v) => updateApplicant({ skills: [...tech, ...v], customPersonalSkills: v.filter((s) => !PERSONAL_SKILLS.includes(s)) }) },
       values: { label: "Values", hint: "pick at least 2", options: VALUES, selected: a.values, max: 4, invalid: a.values.length < 2, set: (v) => updateApplicant({ values: v }) },
       workingStyle: { label: "Working style", hint: "up to 3", options: WORKING_STYLES, selected: a.workingStyle, max: 3, invalid: a.workingStyle.length === 0, set: (v) => updateApplicant({ workingStyle: v }) },
-      personality: { label: "Personality", hint: "up to 3", options: PERSONALITIES, selected: a.personality, max: 3, invalid: a.personality.length === 0, set: (v) => updateApplicant({ personality: v }) },
+      personality: { label: "Personality", hint: "pick 3–4", options: PERSONALITIES, selected: a.personality, max: 4, invalid: a.personality.length < 3, set: (v) => updateApplicant({ personality: v }) },
     };
   }
   function buildScreen() {
