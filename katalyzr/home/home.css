@@ -100,3 +100,13 @@
 
 /* Utilities not in the compiled Tailwind file */
 .font-semibold { font-weight: 600; }
+
+/* Prototype-only shortcut back to the first-match flow (remove for the final app) */
+.k-proto-link { display: flex; align-items: center; gap: 0.85rem; max-width: 52rem; margin: 1.5rem auto 0; padding: 1rem 1.5rem; border: 2px dashed var(--border); border-radius: 1rem; color: var(--foreground); transition: border-color 0.15s, background 0.15s; }
+.k-proto-link:hover { border-color: var(--csg-coral); background: var(--card); }
+.k-proto-link > svg:first-child { width: 1.25rem; height: 1.25rem; color: var(--csg-coral); flex-shrink: 0; }
+.k-proto-link span { display: flex; flex-direction: column; flex: 1; }
+.k-proto-link strong { font-weight: 600; }
+.k-proto-link small { font-size: 0.8rem; color: var(--muted-foreground); }
+.k-proto-link .k-tile-arrow { width: 1rem; height: 1rem; }
+.k-proto-link:hover .k-tile-arrow { transform: translateX(3px); color: var(--csg-coral); }

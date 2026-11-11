@@ -159,7 +159,9 @@
           : tile("introductions", "send", "Your Introductions", esc(current.title + "."), esc(current.note), `Step ${stepNo} of ${JOURNEY.length}`)}
         ${tile("profile", "profile-card", "Your Profile", "The card your match sees first: how you think and work, not a résumé.", "View your card", "Complete")}
         ${tile("settings", "settings", "Settings", "Notifications, what Katalyzr keeps, and opting out.", "Manage settings", "")}
-      </div>`;
+      </div>
+      <!-- Prototype only: lets Fianna jump back to the first-match flow (Prototype 3). Remove for the final app. -->
+      <a href="../prototype-3/" class="k-proto-link">${icon("rotate-ccw")}<span><strong>Back to the first match</strong><small>Prototype only · replays the invitation-to-introduction flow</small></span>${icon("arrow-right", "k-tile-arrow")}</a>`;
   }
 
   function matchesPage() {
