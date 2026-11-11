@@ -4,7 +4,7 @@
   "use strict";
 
   /* ---------- Data ---------- */
-  const STEPS = ["welcome", "build", "waiting", "match", "episode", "psychologist", "hiring-manager", "complete", "home"];
+  const STEPS = ["welcome", "build", "waiting", "match", "episode", "psychologist", "hiring-manager", "complete"];
   const STEP_LABELS = {
     welcome: "Welcome",
     build: "Build your card",
@@ -14,7 +14,6 @@
     psychologist: "Psychologist interview",
     "hiring-manager": "Hiring manager interview",
     complete: "Introduction complete",
-    home: "Take me home",
   };
   const PROGRESS = ["Invited", "Card complete", "Matched", "Episode listened", "Psychologist interview", "Hiring manager interview"];
   const PROGRESS_STEPS = ["welcome", "build", "match", "episode", "psychologist", "hiring-manager"];
@@ -261,7 +260,7 @@
   const iconTile = (name, size = "size-10") =>
     `<span class="${cx("flex shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground", size)}">${icon(name, "size-5")}</span>`;
   // Icon shown next to each page's eyebrow label
-  const STEP_ICONS = { build: "profile-card", waiting: "sparkles", match: "handshake", episode: "headphones", psychologist: "brain", "hiring-manager": "hiring-manager", complete: "party-popper", home: "house" };
+  const STEP_ICONS = { build: "profile-card", waiting: "sparkles", match: "handshake", episode: "headphones", psychologist: "brain", "hiring-manager": "hiring-manager", complete: "party-popper" };
   function pageHeading({ eyebrow, title, description }) {
     const ic = STEP_ICONS[state.step];
     return `<div class="mb-8 max-w-2xl">
@@ -380,7 +379,7 @@
       case "episode": return state.episodeListened ? 4 : 3;
       case "psychologist": return 4;
       case "hiring-manager": return 5;
-      case "complete": case "home": return 6;
+      case "complete": return 6;
     }
   }
   function progressNav() {
@@ -989,7 +988,7 @@
   });
   root.addEventListener("change", (e) => {
     const t = e.target;
-    if (t.id === "step-select") return t.value === "home" ? (location.href = HOME_URL) : goTo(t.value);
+    if (t.id === "step-select") return goTo(t.value);
     if (t.name === "optout-reason") { state.optOutReason = t.value; return; }
     if (t.id === "f-photo" && t.files && t.files[0]) return updateApplicant({ photo: URL.createObjectURL(t.files[0]) });
   });
