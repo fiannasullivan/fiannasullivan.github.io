@@ -202,9 +202,11 @@
       const status = s.done ? "is-done" : s.current ? "is-current" : "is-upcoming";
       let extra = "";
       if (s.decision) {
+        // The yes / no only opens once the introduction before it is done
+        const locked = !steps[i - 1].done;
         extra = state.decision
           ? `<p class="mt-2 flex items-center gap-2 text-sm font-semibold" style="color:var(--csg-navy)">${icon(state.decision === "yes" ? "circle-check" : "x", "size-4")}You said ${state.decision === "yes" ? "yes" : "no"} to Jordan. <button type="button" class="k-link" data-action="decision" data-value="">Undo</button></p>`
-          : `<div class="mt-3 flex items-center gap-3"><button type="button" class="k-btn k-btn-coral" data-action="decision" data-value="yes">${icon("check")}Yes, move forward</button><button type="button" class="k-btn k-btn-outline" data-action="decision" data-value="no">${icon("x")}No, not this time</button></div>`;
+          : `<div class="mt-3 flex items-center gap-3"><button type="button" class="k-btn k-btn-coral" data-action="decision" data-value="yes"${locked ? " disabled" : ""}>${icon("check")}Yes, move forward</button><button type="button" class="k-btn k-btn-outline" data-action="decision" data-value="no"${locked ? " disabled" : ""}>${icon("x")}No, not this time</button></div>${locked ? `<p class="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">${icon("lock", "size-3.5")}Unlocks after your conversation with Jordan</p>` : ""}`;
       }
       return `<li class="k-step ${status}"><span class="k-dot">${s.done ? icon("check") : i + 1}</span><div><p class="k-step-title">${esc(s.title)}</p><p class="k-step-note">${esc(s.note)}</p>${extra}</div></li>`;
     }).join("");
