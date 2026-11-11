@@ -1,0 +1,105 @@
+/* Katalyzr homepage layout. Colors and fonts come from brand.css (CSG branding). */
+
+.k-page { min-height: 100vh; min-width: 1100px; display: flex; flex-direction: column; background: var(--background); }
+.k-main { flex: 1; width: 100%; max-width: 64rem; margin: 0 auto; padding: 3rem 2rem 2.5rem; }
+
+/* Header (navy bar, like culminatestrategy.com) */
+.k-header-inner { max-width: 80rem; margin: 0 auto; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+.k-role { display: inline-flex; padding: 3px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2); }
+.k-role button { padding: 0.35rem 0.9rem; border-radius: 999px; font-size: 0.8rem; color: rgba(255, 255, 255, 0.75); }
+.k-role button[aria-pressed="true"] { background: #fff; color: var(--csg-navy); font-weight: 600; }
+
+/* Greeting */
+.k-greeting { text-align: center; margin-bottom: 2.5rem; }
+.k-greeting h1 { font-family: var(--font-instrument), sans-serif; font-weight: 600; letter-spacing: -0.02em; font-size: 2.5rem; line-height: 1.1; }
+
+/* The four main tiles, 2 x 2, plus the Home tile centered underneath */
+.k-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; max-width: 52rem; margin: 0 auto; }
+.k-tile { position: relative; display: flex; flex-direction: column; gap: 0.75rem; min-height: 11.5rem; padding: 1.75rem; text-align: left; background: var(--card); border: 1px solid var(--border); border-radius: 1.25rem; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 12px 32px -18px rgba(34, 31, 59, 0.25); transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s; }
+.k-tile:hover { transform: translateY(-2px); border-color: var(--csg-coral); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 18px 36px -16px rgba(34, 31, 59, 0.35); }
+.k-tile:focus-visible { outline: 2px solid var(--csg-indigo); outline-offset: 3px; }
+.k-tile-top { display: flex; align-items: center; justify-content: space-between; }
+.k-tile-title { font-family: var(--font-instrument), sans-serif; font-weight: 600; letter-spacing: -0.02em; font-size: 1.6rem; line-height: 1.15; }
+.k-tile-sub { color: var(--muted-foreground); font-size: 0.95rem; line-height: 1.45; }
+.k-tile-meta { margin-top: auto; display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: var(--csg-navy); }
+.k-tile-arrow { color: var(--muted-foreground); transition: transform 0.15s, color 0.15s; }
+.k-tile:hover .k-tile-arrow { transform: translateX(3px); color: var(--csg-coral); }
+.k-badge { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.15rem 0.6rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700; background: var(--csg-pink-wash); color: #8f1f33; }
+.k-icon-tile { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 3rem; height: 3rem; border-radius: 999px; background: var(--accent); color: var(--accent-foreground); }
+.k-icon-tile svg { width: 1.4rem; height: 1.4rem; }
+
+/* Home tile: navy, centered under the grid; shown on every page */
+.k-home-row { display: flex; justify-content: center; margin-top: 1.5rem; }
+.k-home { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; width: 22rem; min-height: 8rem; padding: 1.25rem; border-radius: 1.25rem; background: var(--csg-navy); color: #fff; box-shadow: 0 18px 36px -18px rgba(34, 31, 59, 0.6); transition: transform 0.15s, background 0.15s; }
+.k-home:hover { transform: translateY(-2px); background: #2d2950; }
+.k-home svg { width: 1.6rem; height: 1.6rem; color: var(--csg-coral); }
+.k-home span { font-family: var(--font-instrument), sans-serif; font-weight: 600; font-size: 1.5rem; }
+.k-home small { font-size: 0.8rem; color: rgba(255, 255, 255, 0.7); }
+.k-home.is-current { outline: 3px solid var(--csg-coral); outline-offset: 4px; }
+.k-home-compact { min-height: 0; width: auto; flex-direction: row; gap: 0.6rem; padding: 0.85rem 1.75rem; border-radius: 999px; }
+.k-home-compact span { font-size: 1.05rem; }
+
+/* Sub-pages */
+.k-subhead { margin-bottom: 2rem; }
+.k-eyebrow { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.18em; color: var(--primary); }
+.k-eyebrow svg { width: 1rem; height: 1rem; }
+.k-h1 { font-family: var(--font-instrument), sans-serif; font-weight: 600; letter-spacing: -0.02em; font-size: 2.5rem; line-height: 1.05; }
+.k-lede { margin-top: 0.75rem; max-width: 40rem; color: var(--muted-foreground); font-size: 1.05rem; line-height: 1.55; }
+.k-panel { background: var(--card); border: 1px solid var(--border); border-radius: 1.25rem; padding: 1.75rem; }
+.k-panel + .k-panel { margin-top: 1.25rem; }
+.k-panel-title { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: var(--muted-foreground); }
+.k-panel-title svg { width: 0.9rem; height: 0.9rem; color: var(--csg-coral); }
+.k-two { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.k-empty { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; padding: 2rem 1rem; text-align: center; color: var(--muted-foreground); border: 2px dashed var(--border); border-radius: 1rem; }
+
+/* Timeline (Outgoing Applications) */
+.k-timeline { list-style: none; display: flex; flex-direction: column; }
+.k-step { position: relative; display: flex; gap: 1rem; padding-bottom: 1.4rem; }
+.k-step:last-child { padding-bottom: 0; }
+.k-step::before { content: ""; position: absolute; left: 0.95rem; top: 2.1rem; bottom: 0.2rem; width: 2px; background: var(--border); }
+.k-step:last-child::before { display: none; }
+.k-step.is-done::before { background: var(--csg-navy); }
+.k-dot { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 2rem; height: 2rem; border-radius: 999px; border: 1px solid var(--border); background: var(--card); font-size: 0.75rem; font-weight: 600; color: var(--muted-foreground); }
+.k-dot svg { width: 0.95rem; height: 0.95rem; }
+.is-done .k-dot { background: var(--csg-navy); border-color: var(--csg-navy); color: #fff; }
+.is-current .k-dot { background: var(--accent); border-color: var(--csg-coral); color: var(--accent-foreground); box-shadow: 0 0 0 4px rgba(244, 104, 123, 0.18); }
+.k-step-title { font-weight: 600; }
+.is-upcoming .k-step-title { color: var(--muted-foreground); font-weight: 400; }
+.k-step-note { font-size: 0.875rem; color: var(--muted-foreground); }
+.is-current .k-step-note { color: #8f1f33; font-weight: 600; }
+
+/* Settings */
+.k-setting { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; padding: 1rem 0; border-top: 1px solid var(--border); }
+.k-setting:first-of-type { border-top: 0; padding-top: 0; }
+.k-setting p:first-child { font-weight: 600; }
+.k-setting p + p { font-size: 0.875rem; color: var(--muted-foreground); }
+.k-switch { position: relative; flex-shrink: 0; width: 2.75rem; height: 1.6rem; border-radius: 999px; background: var(--input); transition: background 0.15s; }
+.k-switch::after { content: ""; position: absolute; top: 0.2rem; left: 0.2rem; width: 1.2rem; height: 1.2rem; border-radius: 999px; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); transition: transform 0.15s; }
+.k-switch[aria-checked="true"] { background: var(--csg-navy); }
+.k-switch[aria-checked="true"]::after { transform: translateX(1.15rem); }
+.k-danger { border-color: rgba(210, 58, 82, 0.35); }
+
+/* Buttons */
+.k-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; height: 2.75rem; padding: 0 1.25rem; border-radius: 999px; font-size: 0.9rem; font-weight: 600; transition: background 0.15s, border-color 0.15s; }
+.k-btn svg { width: 1rem; height: 1rem; }
+.k-btn-coral { background: var(--csg-coral); color: #fff; }
+.k-btn-coral:hover { background: var(--csg-coral-deep); }
+.k-btn-navy { background: var(--csg-navy); color: #fff; }
+.k-btn-navy:hover { background: #2d2950; }
+.k-btn-outline { border: 1px solid var(--border); background: var(--card); color: var(--foreground); }
+.k-btn-outline:hover { background: var(--secondary); }
+.k-btn:disabled { opacity: 0.5; pointer-events: none; }
+.k-link { font-size: 0.875rem; color: var(--muted-foreground); text-decoration: underline dotted; text-underline-offset: 4px; }
+.k-link:hover { color: var(--foreground); }
+
+/* Shared trait chips */
+.k-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.k-chip { padding: 0.15rem 0.65rem; border-radius: 999px; border: 1px solid rgba(244, 104, 123, 0.5); background: var(--accent); color: var(--accent-foreground); font-size: 0.78rem; }
+
+/* Dialog (reuses the opt-out look from Prototype 3) */
+.k-modal-backdrop { position: fixed; inset: 0; z-index: 40; background: rgba(34, 31, 59, 0.55); backdrop-filter: blur(2px); }
+.k-modal { position: fixed; z-index: 50; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(560px, calc(100vw - 48px)); max-height: calc(100vh - 48px); overflow-y: auto; background: var(--card); border-radius: 1.25rem; padding: 2.25rem; box-shadow: 0 24px 64px -16px rgba(34, 31, 59, 0.45); }
+.k-modal-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px solid var(--border); }
+
+/* Utilities not in the compiled Tailwind file */
+.font-semibold { font-weight: 600; }
