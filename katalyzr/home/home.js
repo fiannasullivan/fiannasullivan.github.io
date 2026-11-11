@@ -1,6 +1,7 @@
-/* Katalyzr homepage — the base every user lands on, applicants and hiring managers alike.
-   Layout follows Fianna's sketch: CSG header, four tiles (Your Matches, Outgoing Applications,
-   Your Profile, Settings) and a Home tile centered underneath. Same branding as Prototype 3.
+/* Katalyzr homepage — applicant side only for now (the hiring manager side comes later).
+   Layout follows Fianna's sketch: CSG header and four tiles (Your Matches, Your Introductions,
+   Your Profile, Settings). Each sub-page has a Home button to come back. Same branding as Prototype 3.
+   Opened from the end of Prototype 3 with ?stage=introduced, it shows the introduction as complete.
    Rules from the INFO 490 brief: invite-only, no browsing jobs or applicants, matches are made
    by CSG, opt out at any time, past matches kept only if the user opts in, desktop-only. */
 (function () {
@@ -35,40 +36,33 @@
   const PSYCH = { name: "Dr. Marcus Hale", photo: "images/psychologist.jpg" };
   const PODCAST = "Uncommon Operator";
 
-  // Where each side's current introduction stands (7 steps to the final interview, per the brief)
-  const JOURNEY = {
-    applicant: [
-      { title: "Invitation emailed", note: "Nov 2", done: true },
-      { title: "Accepted your invitation", note: "Nov 3", done: true },
-      { title: "Built your card", note: "Nov 3", done: true },
-      { title: "Matched with Elena Vasquez", note: "Chosen by hand by CSG", done: true },
-      { title: `Listened to Elena’s ${PODCAST} episode`, note: "Nov 5", done: true },
-      { title: "Conversation with Dr. Marcus Hale", note: "Scheduled · Thu, Nov 12 · 2:00 PM", current: true },
-      { title: "Introduction with Elena", note: "Scheduled after your conversation with Marcus" },
-    ],
-    manager: [
-      { title: `Interviewed on ${PODCAST}`, note: "Episode 47 with Karrie", done: true },
-      { title: "Joined Katalyzr", note: "Oct 28", done: true },
-      { title: "Built your card", note: "Oct 28", done: true },
-      { title: "Matched with Jordan Ellis", note: "Chosen by hand by CSG", done: true },
-      { title: "Jordan listened to your episode", note: "Nov 5", done: true },
-      { title: "Jordan’s conversation with Dr. Marcus Hale", note: "Scheduled · Thu, Nov 12 · 2:00 PM", current: true },
-      { title: "Your introduction with Jordan", note: "You’ll get Jordan’s approved Mindset brief first" },
-      { title: "Your decision", note: "Yes or no, after your conversation", decision: true },
-    ],
-  };
+  // How far along the applicant is. Prototype 3's last step links here with ?stage=introduced.
+  const INTRODUCED = new URLSearchParams(location.search).get("stage") === "introduced";
+
+  // The applicant's 7 steps to the final interview (from the INFO 490 brief)
+  const JOURNEY = [
+    { title: "Invitation emailed", note: "Nov 2", done: true },
+    { title: "Accepted your invitation", note: "Nov 3", done: true },
+    { title: "Built your card", note: "Nov 3", done: true },
+    { title: "Matched with Elena Vasquez", note: "Chosen by hand by CSG", done: true },
+    { title: `Listened to Elena’s ${PODCAST} episode`, note: "Nov 5", done: true },
+    INTRODUCED
+      ? { title: "Conversation with Dr. Marcus Hale", note: "Nov 12 · Mindset brief approved", done: true }
+      : { title: "Conversation with Dr. Marcus Hale", note: "Scheduled · Thu, Nov 12 · 2:00 PM", current: true },
+    INTRODUCED
+      ? { title: "Introduction with Elena", note: "Nov 12 · You now have each other’s details", done: true }
+      : { title: "Introduction with Elena", note: "Scheduled after your conversation with Marcus" },
+  ];
 
   /* ---------- State ---------- */
   const state = {
-    role: "applicant", // "applicant" | "manager" (prototype switch in the header)
-    view: "home", // "home" | "matches" | "outgoing" | "profile" | "settings"
+    view: "home", // "home" | "matches" | "introductions" | "profile" | "settings"
     settings: { email: true, keepHistory: false, keepCard: true },
-    decision: null, // hiring manager's yes/no
     modal: null, // "optout"
     optedOut: false,
   };
-  const me = () => (state.role === "applicant" ? APPLICANT : HIRING_MANAGER);
-  const them = () => (state.role === "applicant" ? HIRING_MANAGER : APPLICANT);
+  const me = () => APPLICANT;
+  const them = () => HIRING_MANAGER;
   const first = (n) => n.split(" ")[0];
 
   /* ---------- Helpers ---------- */
@@ -138,16 +132,12 @@
   function header() {
     return `<header class="csg-header"><div class="k-header-inner">
       <div class="flex items-center gap-3">${CSG_MARK}<span class="font-serif text-2xl tracking-tight">Katalyzr</span><span class="text-xs text-muted-foreground">by Culminate Strategy Group</span></div>
-      <div class="flex items-center gap-3"><span class="text-xs text-muted-foreground">Prototype · viewing as</span>
-        <div class="k-role" role="group" aria-label="View the homepage as">
-          <button type="button" data-action="role" data-role="applicant" aria-pressed="${state.role === "applicant"}">Applicant</button>
-          <button type="button" data-action="role" data-role="manager" aria-pressed="${state.role === "manager"}">Hiring manager</button>
-        </div></div>
+      <span class="flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground">${icon("lock", "size-3")}Private invitation · KTZ-0417</span>
     </div></header>`;
   }
-  function homeTile(compact) {
-    return `<div class="k-home-row"><button type="button" data-action="view" data-view="home" class="${cx("k-home", compact && "k-home-compact", state.view === "home" && "is-current")}"${state.view === "home" ? ' aria-current="page"' : ""}>
-      ${icon("house")}<span>Home</span>${compact ? "" : "<small>You’re here</small>"}</button></div>`;
+  // Home button at the bottom of every sub-page (not shown on the homepage itself)
+  function homeTile() {
+    return `<div class="k-home-row"><button type="button" data-action="view" data-view="home" class="k-home k-home-compact">${icon("house")}<span>Home</span></button></div>`;
   }
   function subHeading(ic, eyebrow, title, lede) {
     return `<div class="k-subhead"><p class="k-eyebrow">${icon(ic)}${esc(eyebrow)}</p><h1 class="k-h1">${title}</h1>${lede ? `<p class="k-lede">${lede}</p>` : ""}</div>`;
@@ -155,34 +145,34 @@
 
   /* ---------- Pages ---------- */
   function homePage() {
-    const isApp = state.role === "applicant", other = them(), journey = JOURNEY[isApp ? "applicant" : "manager"];
-    const current = journey.find((s) => s.current);
+    const other = them(), current = JOURNEY.find((s) => s.current), stepNo = JOURNEY.indexOf(current) + 1;
     const tile = (view, ic, title, sub, meta, badge) => `<button type="button" class="k-tile" data-action="view" data-view="${view}">
       <div class="k-tile-top"><span class="k-icon-tile">${icon(ic)}</span>${badge ? `<span class="k-badge">${badge}</span>` : ""}</div>
       <div><p class="k-tile-title">${title}</p><p class="k-tile-sub">${sub}</p></div>
       <p class="k-tile-meta">${meta}${icon("arrow-right", "k-tile-arrow size-4")}</p></button>`;
-    return `<div class="k-greeting"><p class="k-eyebrow" style="justify-content:center">${icon("sparkles")}Your introduction is in progress</p>
+    return `<div class="k-greeting"><p class="k-eyebrow" style="justify-content:center">${icon("sparkles")}${INTRODUCED ? "You’ve been introduced" : "Your introduction is in progress"}</p>
         <h1>Welcome back, ${esc(first(me().name))}.</h1></div>
       <div class="k-tiles">
         ${tile("matches", "heart", "Your Matches", `Your current match is ${esc(other.name)}${other.company ? `, ${esc(other.company)}` : ""}.`, "See why you were matched", "1 current")}
-        ${tile("outgoing", "send", "Outgoing Applications", esc(current ? current.title + "." : "Nothing in progress."), current ? esc(current.note) : "", isApp ? "Step 6 of 7" : "Step 6 of 8")}
+        ${INTRODUCED
+          ? tile("introductions", "send", "Your Introductions", `You and ${esc(first(other.name))} have been introduced.`, "See all 7 steps", "Complete")
+          : tile("introductions", "send", "Your Introductions", esc(current.title + "."), esc(current.note), `Step ${stepNo} of ${JOURNEY.length}`)}
         ${tile("profile", "profile-card", "Your Profile", "The card your match sees first: how you think and work, not a résumé.", "View your card", "Complete")}
         ${tile("settings", "settings", "Settings", "Notifications, what Katalyzr keeps, and opting out.", "Manage settings", "")}
-      </div>
-      ${homeTile(false)}`;
+      </div>`;
   }
 
   function matchesPage() {
-    const isApp = state.role === "applicant", other = them(), o = overlap();
+    const other = them(), o = overlap();
     const hl = new Set([...o.skills, ...o.values, ...o.style].map((x) => x.toLowerCase()));
     const why = (title, ic, items) => `<div class="k-panel"><p class="k-panel-title">${icon(ic)}${title} · ${items.length}</p>${items.length ? chips(items) : '<p class="text-sm text-muted-foreground">Complementary rather than shared</p>'}</div>`;
-    return `${subHeading("heart", "Your matches", "Your Matches", `Every match is chosen by hand by Culminate Strategy Group. ${isApp ? "You can’t browse hiring managers" : "You can’t browse applicants"}: you get one introduction at a time.`)}
+    return `${subHeading("heart", "Your matches", "Your Matches", `Every match is chosen by hand by Culminate Strategy Group. You can’t browse hiring managers: you get one introduction at a time.`)}
       <div class="k-two">
         <div>${profileCard(other, "Current match", hl)}</div>
         <div>
           <div class="k-panel">
             <p class="k-panel-title">${icon("sparkles")}Why you were matched</p>
-            <p class="text-base leading-relaxed">${isApp ? `You and ${esc(first(other.name))} both run on candor and ownership, prefer written decisions over meetings, and stay calm when things get chaotic. That’s the mindset CSG looks for in a match.` : `${esc(first(other.name))} shares how you think: candor and ownership first, written decisions over meetings, and calm under pressure. That’s the mindset CSG looks for in a match.`}</p>
+            <p class="text-base leading-relaxed">You and ${esc(first(other.name))} both run on candor and ownership, prefer written decisions over meetings, and stay calm when things get chaotic. That’s the mindset CSG looks for in a match.</p>
           </div>
           ${why("Overlapping skills", "puzzle", o.skills)}${why("Matching values", "heart", o.values)}${why("Working style & personality", "smile", o.style)}
           <div class="k-panel">
@@ -193,33 +183,27 @@
           </div>
         </div>
       </div>
-      ${homeTile(true)}`;
+      ${homeTile()}`;
   }
 
-  function outgoingPage() {
-    const isApp = state.role === "applicant", steps = JOURNEY[isApp ? "applicant" : "manager"];
-    const items = steps.map((s, i) => {
+  function introductionsPage() {
+    const items = JOURNEY.map((s, i) => {
       const status = s.done ? "is-done" : s.current ? "is-current" : "is-upcoming";
-      let extra = "";
-      if (s.decision) {
-        // The yes / no only opens once the introduction before it is done
-        const locked = !steps[i - 1].done;
-        extra = state.decision
-          ? `<p class="mt-2 flex items-center gap-2 text-sm font-semibold" style="color:var(--csg-navy)">${icon(state.decision === "yes" ? "circle-check" : "x", "size-4")}You said ${state.decision === "yes" ? "yes" : "no"} to Jordan. <button type="button" class="k-link" data-action="decision" data-value="">Undo</button></p>`
-          : `<div class="mt-3 flex items-center gap-3"><button type="button" class="k-btn k-btn-coral" data-action="decision" data-value="yes"${locked ? " disabled" : ""}>${icon("check")}Yes, move forward</button><button type="button" class="k-btn k-btn-outline" data-action="decision" data-value="no"${locked ? " disabled" : ""}>${icon("x")}No, not this time</button></div>${locked ? `<p class="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">${icon("lock", "size-3.5")}Unlocks after your conversation with Jordan</p>` : ""}`;
-      }
-      return `<li class="k-step ${status}"><span class="k-dot">${s.done ? icon("check") : i + 1}</span><div><p class="k-step-title">${esc(s.title)}</p><p class="k-step-note">${esc(s.note)}</p>${extra}</div></li>`;
+      return `<li class="k-step ${status}"><span class="k-dot">${s.done ? icon("check") : i + 1}</span><div><p class="k-step-title">${esc(s.title)}</p><p class="k-step-note">${esc(s.note)}</p></div></li>`;
     }).join("");
-    return `${subHeading("send", "Outgoing applications", "Outgoing Applications", isApp ? "Where your introduction to Elena stands. Two conversations, then you’re done." : "Where your introduction to Jordan stands, and your yes or no at the end.")}
+    const next = INTRODUCED
+      ? `<p class="k-panel-title">${icon("circle-check")}Where things stand</p>
+          <div class="flex items-center gap-3">${avatar(HIRING_MANAGER, "size-12 rounded-full")}<div><p class="font-semibold">You’ve been introduced to Elena</p><p class="text-sm text-muted-foreground">You now have each other’s details</p></div></div>
+          <p class="mt-4 text-sm text-muted-foreground">Whatever happens next is between the two of you. Marcus is around if you’d like a sounding board.</p>`
+      : `<p class="k-panel-title">${icon("calendar-check")}Next up</p>
+          <div class="flex items-center gap-3">${avatar(PSYCH, "size-12 rounded-full")}<div><p class="font-semibold">Your conversation with Dr. Marcus Hale</p><p class="text-sm text-muted-foreground">Thu, Nov 12 · 2:00 PM · in Katalyzr</p></div></div>
+          <p class="mt-4 text-sm text-muted-foreground">Not a test: Marcus is your advocate. Afterwards you approve the Mindset brief he shares with Elena.</p>`;
+    return `${subHeading("send", "Your introductions", "Your Introductions", INTRODUCED ? "Your introduction to Elena is complete: two conversations, start to finish." : "Where your introduction to Elena stands. Two conversations, then you’re done.")}
       <div class="k-two">
-        <div class="k-panel">
-          <p class="k-panel-title">${icon("calendar-check")}Next up</p>
-          <div class="flex items-center gap-3">${avatar(PSYCH, "size-12 rounded-full")}<div><p class="font-semibold">${isApp ? "Your conversation with Dr. Marcus Hale" : "Jordan meets Dr. Marcus Hale"}</p><p class="text-sm text-muted-foreground">Thu, Nov 12 · 2:00 PM · in Katalyzr</p></div></div>
-          <p class="mt-4 text-sm text-muted-foreground">${isApp ? "Not a test: Marcus is your advocate. Afterwards you approve the Mindset brief he shares with Elena." : "You’ll get Jordan’s approved Mindset brief before your own conversation."}</p>
-        </div>
-        <div class="k-panel"><p class="k-panel-title">${icon("send")}${isApp ? "Introduction with Elena Vasquez" : "Introduction with Jordan Ellis"}</p><ol class="k-timeline">${items}</ol></div>
+        <div class="k-panel">${next}</div>
+        <div class="k-panel"><p class="k-panel-title">${icon("send")}Introduction with Elena Vasquez</p><ol class="k-timeline">${items}</ol></div>
       </div>
-      ${homeTile(true)}`;
+      ${homeTile()}`;
   }
 
   function profilePage() {
@@ -231,10 +215,10 @@
             <p class="text-base leading-relaxed">All 8 sections are filled in: photo, name and role, experience, key skills, values, working style, personality and mindset.</p></div>
           <div class="k-panel"><p class="k-panel-title">${icon("lock")}Who can see it</p>
             <p class="text-base leading-relaxed">Only your current match and Culminate Strategy Group. Katalyzr isn’t public, and nobody can browse cards.</p></div>
-          ${state.role === "applicant" ? `<div class="k-panel"><p class="k-panel-title">${icon("history")}Next time</p><p class="text-base leading-relaxed">${state.settings.keepCard ? "Your card is saved, so if this introduction doesn’t work out you can skip straight to your next match." : "Your card won’t be kept after this introduction. You can change that in Settings."}</p></div>` : ""}
+          <div class="k-panel"><p class="k-panel-title">${icon("history")}Next time</p><p class="text-base leading-relaxed">${state.settings.keepCard ? "Your card is saved, so if this introduction doesn’t work out you can skip straight to your next match." : "Your card won’t be kept after this introduction. You can change that in Settings."}</p></div>
         </div>
       </div>
-      ${homeTile(true)}`;
+      ${homeTile()}`;
   }
 
   function settingsPage() {
@@ -245,17 +229,17 @@
         ${sw("email", "Email me about next steps", "Reminders before conversations and when it’s your turn to do something.")}</div>
       <div class="k-panel"><p class="k-panel-title">${icon("lock")}What Katalyzr keeps</p>
         ${sw("keepHistory", "Keep my match history", "Save past matches in Your Matches. Off unless you opt in.")}
-        ${state.role === "applicant" ? sw("keepCard", "Keep my card for next time", "If this introduction doesn’t work out, skip building your card and go straight to your next match.") : ""}</div>
+        ${sw("keepCard", "Keep my card for next time", "If this introduction doesn’t work out, skip building your card and go straight to your next match.")}</div>
       <div class="k-panel k-danger"><p class="k-panel-title">${icon("log-out")}Opt out</p>
-        <div class="k-setting"><div><p>Opt out of Katalyzr</p><p>Stop all introductions and contact. ${state.role === "applicant" ? "Your details won’t be shared with any hiring manager." : "No new applicants will be introduced to you."}</p></div>
+        <div class="k-setting"><div><p>Opt out of Katalyzr</p><p>Stop all introductions and contact. Your details won’t be shared with any hiring manager.</p></div>
           <button type="button" class="k-btn k-btn-outline" data-action="modal" data-modal="optout">${icon("log-out")}Opt out</button></div></div>
-      ${homeTile(true)}`;
+      ${homeTile()}`;
   }
 
   function optedOutPage() {
     return `<div class="k-greeting" style="max-width:36rem;margin:2rem auto"><span class="k-icon-tile" style="margin:0 auto 1.25rem;width:4rem;height:4rem">${icon("circle-check")}</span>
       <h1>You’ve opted out.</h1>
-      <p class="k-lede" style="margin-left:auto;margin-right:auto">We won’t contact you about Katalyzr again${state.role === "applicant" ? ", and your details won’t be shared with any hiring manager" : " or introduce anyone new to you"}.</p>
+      <p class="k-lede" style="margin-left:auto;margin-right:auto">We won’t contact you about Katalyzr again, and your details won’t be shared with any hiring manager.</p>
       <div style="margin-top:1.75rem"><button type="button" class="k-btn k-btn-outline" data-action="undo-optout">${icon("rotate-ccw")}Changed your mind? Undo</button></div></div>`;
   }
 
@@ -265,14 +249,14 @@
       <div class="k-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <p class="k-eyebrow">${icon("log-out")}Opt out</p>
         <h2 id="modal-title" class="k-h1" style="font-size:1.9rem">Opt out of Katalyzr?</h2>
-        <p class="k-lede">${state.role === "applicant" ? "We’ll stop contacting you, end your current introduction, and won’t share your details with any hiring manager." : "We’ll end your current introduction and won’t introduce any new applicants to you."}</p>
+        <p class="k-lede">We’ll stop contacting you, end your current introduction, and won’t share your details with any hiring manager.</p>
         <div class="k-modal-actions"><button type="button" class="k-btn k-btn-outline" data-action="close-modal">Cancel</button><button type="button" class="k-btn k-btn-navy" data-action="confirm-optout">${icon("log-out")}Opt out</button></div>
       </div>`;
   }
 
   /* ---------- Render ---------- */
   const root = document.getElementById("root");
-  const PAGES = { home: homePage, matches: matchesPage, outgoing: outgoingPage, profile: profilePage, settings: settingsPage };
+  const PAGES = { home: homePage, matches: matchesPage, introductions: introductionsPage, profile: profilePage, settings: settingsPage };
   function render() {
     const body = state.optedOut ? optedOutPage() : PAGES[state.view]();
     root.innerHTML = `<div class="k-page">${header()}<main class="k-main">${body}</main></div>${modal()}`;
@@ -285,9 +269,7 @@
     const d = el.dataset;
     switch (d.action) {
       case "view": state.view = d.view; render(); return window.scrollTo({ top: 0 });
-      case "role": state.role = d.role; return render();
       case "toggle": state.settings[d.key] = !state.settings[d.key]; return render();
-      case "decision": state.decision = d.value || null; return render();
       case "modal": state.modal = d.modal; return render();
       case "close-modal": state.modal = null; return render();
       case "confirm-optout": state.modal = null; state.optedOut = true; return render();

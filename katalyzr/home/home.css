@@ -5,9 +5,6 @@
 
 /* Header (navy bar, like culminatestrategy.com) */
 .k-header-inner { max-width: 80rem; margin: 0 auto; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
-.k-role { display: inline-flex; padding: 3px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2); }
-.k-role button { padding: 0.35rem 0.9rem; border-radius: 999px; font-size: 0.8rem; color: rgba(255, 255, 255, 0.75); }
-.k-role button[aria-pressed="true"] { background: #fff; color: var(--csg-navy); font-weight: 600; }
 
 /* Greeting */
 .k-greeting { text-align: center; margin-bottom: 2.5rem; }
@@ -28,7 +25,7 @@
 .k-icon-tile { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 3rem; height: 3rem; border-radius: 999px; background: var(--accent); color: var(--accent-foreground); }
 .k-icon-tile svg { width: 1.4rem; height: 1.4rem; }
 
-/* Home tile: navy, centered under the grid; shown on every page */
+/* Home button: navy pill at the bottom of every sub-page */
 .k-home-row { display: flex; justify-content: center; margin-top: 1.5rem; }
 .k-home { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; width: 22rem; min-height: 8rem; padding: 1.25rem; border-radius: 1.25rem; background: var(--csg-navy); color: #fff; box-shadow: 0 18px 36px -18px rgba(34, 31, 59, 0.6); transition: transform 0.15s, background 0.15s; }
 .k-home:hover { transform: translateY(-2px); background: #2d2950; }

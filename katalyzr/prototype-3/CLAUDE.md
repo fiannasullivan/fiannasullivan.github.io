@@ -8,7 +8,7 @@ Plain HTML/CSS/JS port of the v0 build that was at katalyzr.vercel.app. No build
 - `app.js` — the whole app, one IIFE:
   - Data at the top (steps, sample applicant `SAMPLE_APPLICANT`, hiring manager `MATCH`, psychologist `PSYCH`, chapters, skill/value lists).
   - `state` object + `goTo(step)`; `render()` rebuilds `#root` from HTML strings and restores input focus.
-  - One function per screen: `welcomeScreen`, `buildScreen`, `waitingScreen`, `matchScreen`, `episodeScreen`, `interviewScreen(kind)`, `completeScreen`.
+  - One function per screen: `welcomeScreen`, `buildScreen`, `waitingScreen`, `matchScreen`, `episodeScreen`, `interviewScreen(kind)`, `completeScreen`, `takeMeHomeScreen`. The last step ("8. Take me home") links to `../home/?stage=introduced`, the applicant homepage.
   - Clicks are handled by one delegated listener keyed on `data-action` attributes.
   - Animations (`animate-in ...`) are wrapped in `anim()` so they only play when a step first appears.
 - `images/` — sample photos and podcast cover.

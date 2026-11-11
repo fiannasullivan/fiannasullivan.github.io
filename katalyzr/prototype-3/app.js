@@ -4,7 +4,7 @@
   "use strict";
 
   /* ---------- Data ---------- */
-  const STEPS = ["welcome", "build", "waiting", "match", "episode", "psychologist", "hiring-manager", "complete"];
+  const STEPS = ["welcome", "build", "waiting", "match", "episode", "psychologist", "hiring-manager", "complete", "home"];
   const STEP_LABELS = {
     welcome: "Welcome",
     build: "Build your card",
@@ -14,6 +14,7 @@
     psychologist: "Psychologist interview",
     "hiring-manager": "Hiring manager interview",
     complete: "Introduction complete",
+    home: "Take me home",
   };
   const PROGRESS = ["Invited", "Card complete", "Matched", "Episode listened", "Psychologist interview", "Hiring manager interview"];
   const PROGRESS_STEPS = ["welcome", "build", "match", "episode", "psychologist", "hiring-manager"];
@@ -243,6 +244,9 @@
     "circle-help": '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
     "circle-check": '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
     "log-out": '<path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>',
+    house: '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+    send: '<path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/>',
+    settings: '<path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/>',
     "list-checks": '<path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/>',
   };
   const icon = (name, cls = "") =>
@@ -256,7 +260,7 @@
   const iconTile = (name, size = "size-10") =>
     `<span class="${cx("flex shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground", size)}">${icon(name, "size-5")}</span>`;
   // Icon shown next to each page's eyebrow label
-  const STEP_ICONS = { build: "profile-card", waiting: "sparkles", match: "handshake", episode: "headphones", psychologist: "brain", "hiring-manager": "hiring-manager", complete: "party-popper" };
+  const STEP_ICONS = { build: "profile-card", waiting: "sparkles", match: "handshake", episode: "headphones", psychologist: "brain", "hiring-manager": "hiring-manager", complete: "party-popper", home: "house" };
   function pageHeading({ eyebrow, title, description }) {
     const ic = STEP_ICONS[state.step];
     return `<div class="mb-8 max-w-2xl">
@@ -375,7 +379,7 @@
       case "episode": return state.episodeListened ? 4 : 3;
       case "psychologist": return 4;
       case "hiring-manager": return 5;
-      case "complete": return 6;
+      case "complete": case "home": return 6;
     }
   }
   function progressNav() {
@@ -863,12 +867,32 @@
         <h1 class="max-w-3xl font-serif text-6xl leading-[1.05] text-balance">That's it. You've been introduced.</h1>
         <p class="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground text-pretty">${esc(firstName(MATCH.name))} and you now have each other's details. Whatever happens next is between the two of you — Marcus is around if you'd like a sounding board.</p>
         ${goBetween(false, "mt-6")}
+        ${button({ size: "lg", className: "csg-cta mt-8 h-12 gap-2 rounded-full px-6 text-base", attrs: 'data-action="goto" data-step="home"', content: "Next: your Katalyzr home" + icon("arrow-right", "size-4") })}
       </div>
       ${threeColumns(
         profileCard(state.applicant, { label: "You", highlight: c.highlight }),
         connectionPanel(c, button({ variant: "outline", className: "w-full gap-2 rounded-full", attrs: 'data-action="restart"', content: icon("rotate-ccw", "size-4") + "Restart prototype" })),
         profileCard(MATCH, { label: "Your match", highlight: c.highlight })
       )}</div>`;
+  }
+
+  // Final step: hands the applicant off to the Katalyzr homepage (../home/)
+  function takeMeHomeScreen() {
+    const HOME_URL = "../home/?stage=introduced";
+    const tile = (ic, title, text) => `<div class="flex flex-col gap-3 rounded-2xl border bg-card p-5 text-left shadow-sm">${iconTile(ic)}<div><p class="font-serif text-xl leading-tight">${title}</p><p class="mt-1 text-sm text-muted-foreground">${text}</p></div></div>`;
+    return `<div class="mx-auto flex max-w-3xl flex-col items-center text-center">
+      ${iconTile("house", "size-16")}
+      <p class="mt-6 mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">You’re all set</p>
+      <h1 class="font-serif text-6xl leading-[1.05] text-balance">Welcome to your Katalyzr home.</h1>
+      <p class="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground text-pretty">From now on, everything lives in one place: your match, where your introduction stands, your card and your settings, including opting out at any time.</p>
+      <div class="mt-10 grid w-full grid-cols-2 gap-4">
+        ${tile("heart", "Your Matches", `${esc(MATCH.name)}, and why you were matched.`)}
+        ${tile("send", "Your Introductions", "All 7 steps, from invitation to introduction.")}
+        ${tile("profile-card", "Your Profile", "The card your match sees first.")}
+        ${tile("settings", "Settings", "What Katalyzr keeps, and opting out.")}
+      </div>
+      <a href="${HOME_URL}" data-slot="button" class="${merge(cx(BTN_BASE, BTN_VARIANT.default, BTN_SIZE.lg, "csg-cta mt-10 h-12 gap-2 rounded-full px-8 text-base"))}">${icon("house", "size-4")}Take me home${icon("arrow-right", "size-4")}</a>
+    </div>`;
   }
 
   function screen() {
@@ -881,6 +905,7 @@
       case "psychologist": return interviewScreen("psychologist");
       case "hiring-manager": return interviewScreen("hiring-manager");
       case "complete": return completeScreen();
+      case "home": return takeMeHomeScreen();
     }
   }
 
