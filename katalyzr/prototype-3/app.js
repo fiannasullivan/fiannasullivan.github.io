@@ -47,6 +47,7 @@
   };
   const PSYCH = { name: "Dr. Marcus Hale", title: "Talent Psychologist, CSG", credentials: "PhD, organizational psychology", photo: "images/psychologist.jpg" };
   const PODCAST = "Uncommon Operator";
+  const HOME_URL = "../home/?stage=introduced"; // the applicant homepage, shown as "introduced"
   const EPISODE_LENGTH = 3494;
   const CHAPTERS = [
     { start: 0, label: "Cold open" },
@@ -867,32 +868,13 @@
         <h1 class="max-w-3xl font-serif text-6xl leading-[1.05] text-balance">That's it. You've been introduced.</h1>
         <p class="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground text-pretty">${esc(firstName(MATCH.name))} and you now have each other's details. Whatever happens next is between the two of you — Marcus is around if you'd like a sounding board.</p>
         ${goBetween(false, "mt-6")}
-        ${button({ size: "lg", className: "csg-cta mt-8 h-12 gap-2 rounded-full px-6 text-base", attrs: 'data-action="goto" data-step="home"', content: "Next: your Katalyzr home" + icon("arrow-right", "size-4") })}
+        <a href="${HOME_URL}" data-slot="button" class="${merge(cx(BTN_BASE, BTN_VARIANT.default, BTN_SIZE.lg, "csg-cta mt-8 h-12 gap-2 rounded-full px-6 text-base"))}">${icon("house", "size-4")}Take me home${icon("arrow-right", "size-4")}</a>
       </div>
       ${threeColumns(
         profileCard(state.applicant, { label: "You", highlight: c.highlight }),
         connectionPanel(c, button({ variant: "outline", className: "w-full gap-2 rounded-full", attrs: 'data-action="restart"', content: icon("rotate-ccw", "size-4") + "Restart prototype" })),
         profileCard(MATCH, { label: "Your match", highlight: c.highlight })
       )}</div>`;
-  }
-
-  // Final step: hands the applicant off to the Katalyzr homepage (../home/)
-  function takeMeHomeScreen() {
-    const HOME_URL = "../home/?stage=introduced";
-    const tile = (ic, title, text) => `<div class="flex flex-col gap-3 rounded-2xl border bg-card p-5 text-left shadow-sm">${iconTile(ic)}<div><p class="font-serif text-xl leading-tight">${title}</p><p class="mt-1 text-sm text-muted-foreground">${text}</p></div></div>`;
-    return `<div class="mx-auto flex max-w-3xl flex-col items-center text-center">
-      ${iconTile("house", "size-16")}
-      <p class="mt-6 mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">You’re all set</p>
-      <h1 class="font-serif text-6xl leading-[1.05] text-balance">Welcome to your Katalyzr home.</h1>
-      <p class="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground text-pretty">From now on, everything lives in one place: your match, where your introduction stands, your card and your settings, including opting out at any time.</p>
-      <div class="mt-10 grid w-full grid-cols-2 gap-4">
-        ${tile("heart", "Your Matches", `${esc(MATCH.name)}, and why you were matched.`)}
-        ${tile("send", "Your Introductions", "All 7 steps, from invitation to introduction.")}
-        ${tile("profile-card", "Your Profile", "The card your match sees first.")}
-        ${tile("settings", "Settings", "What Katalyzr keeps, and opting out.")}
-      </div>
-      <a href="${HOME_URL}" data-slot="button" class="${merge(cx(BTN_BASE, BTN_VARIANT.default, BTN_SIZE.lg, "csg-cta mt-10 h-12 gap-2 rounded-full px-8 text-base"))}">${icon("house", "size-4")}Take me home${icon("arrow-right", "size-4")}</a>
-    </div>`;
   }
 
   function screen() {
@@ -905,7 +887,6 @@
       case "psychologist": return interviewScreen("psychologist");
       case "hiring-manager": return interviewScreen("hiring-manager");
       case "complete": return completeScreen();
-      case "home": return takeMeHomeScreen();
     }
   }
 
@@ -1008,7 +989,7 @@
   });
   root.addEventListener("change", (e) => {
     const t = e.target;
-    if (t.id === "step-select") return goTo(t.value);
+    if (t.id === "step-select") return t.value === "home" ? (location.href = HOME_URL) : goTo(t.value);
     if (t.name === "optout-reason") { state.optOutReason = t.value; return; }
     if (t.id === "f-photo" && t.files && t.files[0]) return updateApplicant({ photo: URL.createObjectURL(t.files[0]) });
   });
