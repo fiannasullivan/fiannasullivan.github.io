@@ -54,14 +54,45 @@
       : { title: "Introduction with Elena", note: "Scheduled after your conversation with Marcus" },
   ];
 
+  // Same choices and limits as "Build your card" in Prototype 3
+  const TECH_SKILLS = ["Systems thinking", "Operations", "Product strategy", "Go-to-market", "Data analysis", "Fundraising", "Engineering leadership", "Brand"];
+  const PERSONAL_SKILLS = ["Team building", "Negotiation"];
+  const VALUES = ["Candor", "Ownership", "Curiosity", "Craft", "Long-term thinking", "Generosity", "Speed", "Humility"];
+  const WORKING_STYLES = ["Async-first", "Written decisions", "Deep work blocks", "High autonomy", "Highly collaborative", "In-person energy"];
+  const PERSONALITIES = ["Direct", "Warm", "Calm under pressure", "Curious", "Playful", "Restless", "Reflective"];
+  function checklist(a) {
+    return [
+      { label: "Photo", done: !!a.photo },
+      { label: "Name & role", done: !!(a.name.trim() && a.role.trim()) },
+      { label: "Experience", done: !!(String(a.experienceYears).trim() && a.experience.trim()) },
+      { label: "Key skills", done: a.skills.length >= 2 },
+      { label: "Values", done: a.values.length >= 2 },
+      { label: "Working style", done: a.workingStyle.length >= 1 },
+      { label: "Personality", done: a.personality.length >= 3 },
+      { label: "Mindset", done: !!a.mindset.trim() },
+    ];
+  }
+
   /* ---------- State ---------- */
   const state = {
     view: "home", // "home" | "matches" | "introductions" | "profile" | "settings"
+    card: loadCard(), // the applicant's saved card
+    edit: null, // Your Profile: a draft copy of the card while editing, or null
+    editErrors: false, // show what's missing after a failed save
+    chipDrafts: {}, // text typed into each "Add your own" box
+    savedNote: false, // "Card saved" notice
     settings: { email: true, keepHistory: false, keepCard: true },
     modal: null, // "optout"
     optedOut: false,
   };
-  const me = () => APPLICANT;
+  // The applicant's card. Edits from Your Profile are saved in this browser (prototype only).
+  const SAVE_KEY = "katalyzr-home-card";
+  function loadCard() {
+    try { const saved = JSON.parse(localStorage.getItem(SAVE_KEY)); if (saved && saved.name) return saved; } catch (e) { /* storage off */ }
+    return { ...APPLICANT };
+  }
+  function saveCard(card) { try { localStorage.setItem(SAVE_KEY, JSON.stringify(card)); } catch (e) { /* storage off */ } }
+  const me = () => state.card;
   const them = () => HIRING_MANAGER;
   const first = (n) => n.split(" ")[0];
 
@@ -69,6 +100,10 @@
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const cx = (...a) => a.filter(Boolean).join(" ");
   const ICONS = {
+    pencil: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
+    upload: '<path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>',
+    plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+    briefcase: '<path d="M12 12h.01"/><path d="M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><path d="M22 13a18.15 18.15 0 0 1-20 0"/><rect width="20" height="14" x="2" y="6" rx="2"/>',
     heart: '<path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/>',
     send: '<path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/>',
     "profile-card": '<path d="M4 6.375h13.5L22 10.875v4.75a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7.25a2 2 0 0 1 2-2z"/><path d="M17.5 6.375v3a1.5 1.5 0 0 0 1.5 1.5h3"/><circle cx="12" cy="10.4" r="2.1"/><path d="M8.6 15.6a3.4 3.4 0 0 1 6.8 0"/>',
@@ -101,7 +136,7 @@
     return a.filter((x) => set.has(x.toLowerCase()));
   }
   function overlap() {
-    const a = APPLICANT, m = HIRING_MANAGER;
+    const a = state.card, m = HIRING_MANAGER;
     return { skills: shared(a.skills, m.skills), values: shared(a.values, m.values), style: [...shared(a.workingStyle, m.workingStyle), ...shared(a.personality, m.personality)] };
   }
   const avatar = (p, cls) => `<div class="${cx("shrink-0 overflow-hidden bg-muted", cls)}"><img src="${esc(p.photo)}" alt="" class="size-full object-cover"></div>`;
@@ -112,19 +147,19 @@
     const sub = [p.role, p.company].filter(Boolean).join(" · ");
     const list = (title, ic, items) => `<div>
       <p class="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${icon(ic, "size-3.5 text-brass")}${esc(title)}</p>
-      <ul class="flex flex-wrap gap-1.5">${items.map((i) => {
+      <ul class="flex flex-wrap gap-1.5">${items.length === 0 ? '<li class="rounded-full border border-dashed px-2.5 py-0.5 text-xs text-muted-foreground">Not added yet</li>' : ""}${items.map((i) => {
         const on = highlight && highlight.has(i.toLowerCase());
         return `<li class="${cx("rounded-full border px-2.5 py-0.5 text-xs", on ? "border-brass/60 bg-accent text-accent-foreground" : "bg-secondary/60 text-secondary-foreground")}">${esc(i)}</li>`;
       }).join("")}</ul></div>`;
     return `<article aria-label="${esc(label)}: ${esc(p.name)}" class="flex w-full flex-col overflow-hidden rounded-2xl border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-12px_rgba(60,40,10,0.18)]">
-      <div class="relative aspect-[4/3] w-full bg-muted"><img src="${esc(p.photo)}" alt="Portrait of ${esc(p.name)}" class="size-full object-cover">
+      <div class="relative aspect-[4/3] w-full bg-muted">${p.photo ? `<img src="${esc(p.photo)}" alt="Portrait of ${esc(p.name)}" class="size-full object-cover">` : `<div class="flex size-full items-center justify-center text-xs text-muted-foreground">No photo</div>`}
         <span class="absolute left-3 top-3 rounded-full bg-card/90 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-foreground backdrop-blur">${esc(label)}</span></div>
       <div class="flex flex-col gap-4 p-5">
-        <header><h3 class="font-serif text-3xl leading-tight">${esc(p.name)}</h3><p class="text-sm text-muted-foreground">${esc(sub)}</p>
-          <p class="mt-2 text-sm leading-relaxed text-pretty"><span class="font-medium text-foreground">${esc(p.experienceYears)} yrs · </span>${esc(p.experience)}</p></header>
+        <header><h3 class="font-serif text-3xl leading-tight">${esc(p.name || "Your name")}</h3><p class="text-sm text-muted-foreground">${esc(sub || "Current role")}</p>
+          <p class="mt-2 text-sm leading-relaxed text-pretty">${p.experienceYears ? `<span class="font-medium text-foreground">${esc(p.experienceYears)} yrs · </span>` : ""}${esc(p.experience || "Your experience in a sentence")}</p></header>
         ${list("Key skills", "puzzle", p.skills)}${list("Values", "heart", p.values)}${list("Working style", "compass", p.workingStyle)}${list("Personality", "smile", p.personality)}
         <div><p class="mb-1 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${icon("lightbulb", "size-3.5 text-brass")}Mindset</p>
-          <blockquote class="border-l-2 border-brass pl-3 font-serif text-lg italic leading-snug text-pretty">“${esc(p.mindset)}”</blockquote></div>
+          <blockquote class="border-l-2 border-brass pl-3 font-serif text-lg italic leading-snug text-pretty">${p.mindset ? `“${esc(p.mindset)}”` : "The belief that drives how you work"}</blockquote></div>
       </div></article>`;
   }
 
@@ -209,18 +244,95 @@
   }
 
   function profilePage() {
+    if (state.edit) return editProfilePage();
+    const list = checklist(state.card), done = list.filter((c) => c.done).length;
     return `${subHeading("profile-card", "Your profile", "Your Profile", `This is the card ${esc(first(them().name))} sees first. It describes how you think and work, not your résumé.`)}
+      ${state.savedNote ? `<div class="k-saved" role="status">${icon("circle-check")}Your card is saved. ${esc(first(them().name))} will see the updated version.</div>` : ""}
       <div class="k-two">
         <div>${profileCard(me(), "You")}</div>
         <div>
-          <div class="k-panel"><p class="k-panel-title">${icon("circle-check")}Card complete</p>
-            <p class="text-base leading-relaxed">All 8 sections are filled in: photo, name and role, experience, key skills, values, working style, personality and mindset.</p></div>
+          <div class="k-panel"><p class="k-panel-title">${icon("profile-card")}Keep it current</p>
+            <p class="text-base leading-relaxed">Changed roles, or found a better way to describe how you work? Update your card any time.</p>
+            <button type="button" class="k-btn k-btn-coral mt-4" data-action="edit-start">${icon("pencil")}Edit your card</button></div>
+          <div class="k-panel"><p class="k-panel-title">${icon("circle-check")}${done === list.length ? "Card complete" : `${done} of ${list.length} complete`}</p>
+            <p class="text-base leading-relaxed">${done === list.length ? "All 8 sections are filled in: photo, name and role, experience, key skills, values, working style, personality and mindset." : "Some sections still need filling in."}</p></div>
           <div class="k-panel"><p class="k-panel-title">${icon("lock")}Who can see it</p>
             <p class="text-base leading-relaxed">Only your current match and Culminate Strategy Group. Katalyzr isn’t public, and nobody can browse cards.</p></div>
           <div class="k-panel"><p class="k-panel-title">${icon("history")}Next time</p><p class="text-base leading-relaxed">${state.settings.keepCard ? "Your card is saved, so if this introduction doesn’t work out you can skip straight to your next match." : "Your card won’t be kept after this introduction. You can change that in Settings."}</p></div>
         </div>
       </div>
       ${homeTile()}`;
+  }
+
+  // Edit mode: same fields and limits as "Build your card", with a live preview on the left
+  const INPUT = "w-full rounded-lg border bg-card px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-3 focus:ring-primary/15";
+  const INVALID = "border-red-500 ring-2 ring-red-500";
+  function chipGroups(d) {
+    const custom = d.customPersonalSkills || [];
+    const isPersonal = (s) => PERSONAL_SKILLS.includes(s) || custom.includes(s);
+    const personal = d.skills.filter(isPersonal), tech = d.skills.filter((s) => !isPersonal(s));
+    return {
+      tech: { label: "Technical skills", hint: "up to 3", options: TECH_SKILLS, selected: tech, max: 3, invalid: d.skills.length < 2, set: (v) => { d.skills = [...v, ...personal]; } },
+      personal: { label: "Personal skills", hint: "up to 3", options: PERSONAL_SKILLS, selected: personal, max: 3, invalid: d.skills.length < 2, set: (v) => { d.skills = [...tech, ...v]; d.customPersonalSkills = v.filter((s) => !PERSONAL_SKILLS.includes(s)); } },
+      values: { label: "Values", hint: "pick at least 2", options: VALUES, selected: d.values, max: 4, invalid: d.values.length < 2, set: (v) => { d.values = v; } },
+      workingStyle: { label: "Working style", hint: "up to 3", options: WORKING_STYLES, selected: d.workingStyle, max: 3, invalid: d.workingStyle.length === 0, set: (v) => { d.workingStyle = v; } },
+      personality: { label: "Personality", hint: "pick 3–4", options: PERSONALITIES, selected: d.personality, max: 4, invalid: d.personality.length < 3, set: (v) => { d.personality = v; } },
+    };
+  }
+  function chipPicker(key, g) {
+    const full = g.selected.length >= g.max, all = [...g.options, ...g.selected.filter((s) => !g.options.includes(s))], draft = state.chipDrafts[key] || "";
+    return `<fieldset class="${cx(state.editErrors && g.invalid && "rounded-lg outline-2 outline-offset-4 outline-red-500")}">
+      <div class="mb-2 flex items-baseline justify-between"><legend class="text-sm font-medium">${esc(g.label)}</legend><span class="text-xs text-muted-foreground">${g.selected.length}/${g.max} · ${esc(g.hint)}</span></div>
+      <div class="flex flex-wrap gap-2">
+        ${all.map((o) => { const on = g.selected.includes(o); return `<button type="button" data-action="chip" data-key="${key}" data-value="${esc(o)}" aria-pressed="${on}"${!on && full ? " disabled" : ""} class="${cx("flex items-center gap-1 rounded-full border px-3 py-1 text-sm transition-colors disabled:opacity-40", on ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:border-foreground/30 hover:bg-secondary")}">${on ? icon("check", "size-3.5") : ""}${esc(o)}</button>`; }).join("")}
+        <div class="flex items-center rounded-full border border-dashed bg-card pl-3 pr-1 focus-within:border-primary">
+          <label for="chip-${key}" class="sr-only">Add your own ${esc(g.label.toLowerCase())}</label>
+          <input id="chip-${key}" data-chip-input="${key}" value="${esc(draft)}"${full ? " disabled" : ""} placeholder="Add your own" class="w-28 bg-transparent py-1 text-sm outline-none placeholder:text-muted-foreground disabled:opacity-40">
+          <button type="button" data-action="chip-add" data-key="${key}"${full || !draft.trim() ? " disabled" : ""} class="rounded-full p-1 text-muted-foreground hover:text-foreground disabled:opacity-40">${icon("plus", "size-4")}<span class="sr-only">Add</span></button>
+        </div>
+      </div></fieldset>`;
+  }
+  function editProfilePage() {
+    const d = state.edit, g = chipGroups(d), list = checklist(d), done = list.filter((c) => c.done).length;
+    const err = (bad) => state.editErrors && bad;
+    const field = (label, id, input) => `<div class="flex flex-col gap-1.5"><label for="${id}" class="text-sm font-medium">${esc(label)}</label>${input}</div>`;
+    const section = (title, ic, body) => `<section class="flex flex-col gap-5"><h2 class="flex items-center gap-3 font-serif text-2xl"><span class="k-icon-tile">${icon(ic)}</span>${esc(title)}</h2>${body}</section>`;
+    return `${subHeading("pencil", "Your profile", "Edit your card", "Changes show in the preview as you type. Nothing is shared until you save.")}
+      <div class="k-two">
+        <div class="k-sticky">${profileCard(d, "You · Live preview", null)}
+          <div class="k-panel" style="margin-top:1rem"><p class="k-panel-title">${icon("circle-check")}${done} of ${list.length} complete</p>
+            <ul class="k-check">${list.map((c) => `<li class="${c.done ? "is-done" : ""}"><span>${c.done ? icon("check") : ""}</span>${esc(c.label)}</li>`).join("")}</ul></div>
+        </div>
+        <form id="edit-form" class="k-panel flex flex-col gap-8" novalidate>
+          ${section("The basics", "user-round", `
+            <div class="${cx("flex items-center gap-4 rounded-lg", err(!d.photo) && "outline-2 outline-offset-4 outline-red-500")}">
+              ${d.photo ? avatar(d, "size-16 rounded-full") : `<div class="flex size-16 shrink-0 items-center justify-center rounded-full bg-muted text-xs text-muted-foreground">Photo</div>`}
+              <div class="flex flex-wrap gap-2">
+                <label for="e-photo" class="k-btn k-btn-outline" style="cursor:pointer">${icon("upload")}Change photo<input id="e-photo" type="file" accept="image/*" class="sr-only"></label>
+                <button type="button" class="k-link" data-action="sample-photo">Use sample photo</button>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              ${field("Full name", "e-name", `<input id="e-name" data-field="name" class="${cx(INPUT, err(!d.name.trim()) && INVALID)}" value="${esc(d.name)}" autocomplete="name">`)}
+              ${field("Current role", "e-role", `<input id="e-role" data-field="role" class="${cx(INPUT, err(!d.role.trim()) && INVALID)}" value="${esc(d.role)}">`)}
+            </div>`)}
+          ${section("Experience", "briefcase", `
+            <div class="k-exp-grid">
+              ${field("Years", "e-years", `<input id="e-years" data-field="experienceYears" type="number" min="0" max="60" inputmode="numeric" class="${cx(INPUT, err(!String(d.experienceYears).trim()) && INVALID)}" value="${esc(d.experienceYears)}">`)}
+              ${field("In one sentence, what have you built?", "e-exp", `<input id="e-exp" data-field="experience" maxlength="140" class="${cx(INPUT, err(!d.experience.trim()) && INVALID)}" value="${esc(d.experience)}">`)}
+            </div>
+            ${chipPicker("tech", g.tech)}${chipPicker("personal", g.personal)}`)}
+          ${section("How you work", "compass", chipPicker("values", g.values) + chipPicker("workingStyle", g.workingStyle) + chipPicker("personality", g.personality))}
+          ${section("Mindset", "lightbulb", field("The belief that drives how you work", "e-mindset", `<textarea id="e-mindset" data-field="mindset" rows="2" maxlength="100" class="${cx(INPUT, "resize-none font-serif text-lg italic", err(!d.mindset.trim()) && INVALID)}">${esc(d.mindset)}</textarea>`))}
+          <div class="flex items-center justify-between border-t pt-6">
+            <p class="text-sm text-muted-foreground">${state.editErrors && done < list.length ? "Fill in the highlighted sections to save." : "You can change this again any time."}</p>
+            <div class="flex items-center gap-3">
+              <button type="button" class="k-btn k-btn-outline" data-action="edit-cancel">Cancel</button>
+              <button type="submit" class="k-btn k-btn-coral">${icon("check")}Save changes</button>
+            </div>
+          </div>
+        </form>
+      </div>`;
   }
 
   function settingsPage() {
@@ -260,8 +372,15 @@
   const root = document.getElementById("root");
   const PAGES = { home: homePage, matches: matchesPage, introductions: introductionsPage, profile: profilePage, settings: settingsPage };
   function render() {
+    const active = document.activeElement, focusId = active && active.id;
+    let s1 = null, s2 = null;
+    try { s1 = active.selectionStart; s2 = active.selectionEnd; } catch (e) { /* not a text field */ }
     const body = state.optedOut ? optedOutPage() : PAGES[state.view]();
     root.innerHTML = `<div class="k-page">${header()}<main class="k-main">${body}</main></div>${modal()}`;
+    if (focusId) {
+      const el = document.getElementById(focusId);
+      if (el && !el.disabled) { el.focus({ preventScroll: true }); try { if (s1 !== null) el.setSelectionRange(s1, s2); } catch (e) { /* number input */ } }
+    }
   }
 
   /* ---------- Events ---------- */
@@ -270,13 +389,55 @@
     if (!el || el.disabled) return;
     const d = el.dataset;
     switch (d.action) {
-      case "view": state.view = d.view; render(); return window.scrollTo({ top: 0 });
+      case "view": state.view = d.view; state.edit = null; state.savedNote = false; render(); return window.scrollTo({ top: 0 });
+      case "edit-start": state.edit = JSON.parse(JSON.stringify(state.card)); state.editErrors = false; state.chipDrafts = {}; state.savedNote = false; render(); return window.scrollTo({ top: 0 });
+      case "edit-cancel": state.edit = null; render(); return window.scrollTo({ top: 0 });
+      case "sample-photo": state.edit.photo = APPLICANT.photo; return render();
+      case "chip": {
+        const g = chipGroups(state.edit)[d.key], v = d.value;
+        if (g.selected.includes(v)) g.set(g.selected.filter((s) => s !== v)); else if (g.selected.length < g.max) g.set([...g.selected, v]);
+        return render();
+      }
+      case "chip-add": return addChip(d.key);
       case "toggle": state.settings[d.key] = !state.settings[d.key]; return render();
       case "modal": state.modal = d.modal; return render();
       case "close-modal": state.modal = null; return render();
       case "confirm-optout": state.modal = null; state.optedOut = true; return render();
       case "undo-optout": state.optedOut = false; state.view = "home"; return render();
     }
+  });
+  function addChip(key) {
+    const g = chipGroups(state.edit)[key], v = (state.chipDrafts[key] || "").trim();
+    if (!v || g.selected.length >= g.max || g.selected.some((s) => s.toLowerCase() === v.toLowerCase())) return;
+    state.chipDrafts[key] = "";
+    g.set([...g.selected, v]);
+    render();
+  }
+  root.addEventListener("input", (e) => {
+    const t = e.target;
+    if (!state.edit) return;
+    if (t.dataset.field) { state.edit[t.dataset.field] = t.value; return render(); }
+    if (t.dataset.chipInput) { state.chipDrafts[t.dataset.chipInput] = t.value; return render(); }
+  });
+  root.addEventListener("change", (e) => {
+    const t = e.target;
+    if (t.id === "e-photo" && t.files && t.files[0]) {
+      // Read as a data URL so the new photo survives a page refresh
+      const reader = new FileReader();
+      reader.onload = () => { state.edit.photo = reader.result; render(); };
+      reader.readAsDataURL(t.files[0]);
+    }
+  });
+  root.addEventListener("keydown", (e) => {
+    const t = e.target;
+    if (t.dataset && t.dataset.chipInput && e.key === "Enter") { e.preventDefault(); addChip(t.dataset.chipInput); }
+  });
+  root.addEventListener("submit", (e) => {
+    if (e.target.id !== "edit-form") return;
+    e.preventDefault();
+    if (!checklist(state.edit).every((c) => c.done)) { state.editErrors = true; return render(); }
+    state.card = state.edit; state.edit = null; state.savedNote = true; saveCard(state.card);
+    render(); window.scrollTo({ top: 0 });
   });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && state.modal) { state.modal = null; render(); } });
 
