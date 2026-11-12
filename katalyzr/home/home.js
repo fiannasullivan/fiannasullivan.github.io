@@ -54,6 +54,33 @@
       : { title: "Introduction with Elena", note: "Scheduled after your conversation with Marcus" },
   ];
 
+  // Past matches (sample). Jordan opted in to keeping match history, so they show in Your Matches and Your Introductions.
+  const PAST_MATCHES = [
+    {
+      id: "daniel", status: "ended", when: "Aug 2026",
+      outcome: "You met Daniel, and he decided to go in a different direction for the role.",
+      person: { photo: null, name: "Daniel Okafor", role: "VP of Operations", company: "Northwind Logistics", experienceYears: "14", experience: "Rebuilt Northwind’s fulfillment network across 12 warehouses.", skills: ["Operations", "Data analysis", "Negotiation"], values: ["Ownership", "Speed", "Candor"], workingStyle: ["Highly collaborative", "In-person energy"], personality: ["Direct", "Restless", "Warm"], mindset: "Move fast, then make it repeatable." },
+      steps: [
+        { title: "Matched with Daniel Okafor", note: "Aug 4", done: true },
+        { title: `Listened to Daniel’s ${PODCAST} episode`, note: "Aug 6", done: true },
+        { title: "Conversation with Dr. Marcus Hale", note: "Aug 11", done: true },
+        { title: "Introduction with Daniel", note: "Aug 14", done: true },
+        { title: "Introduction ended", note: "Daniel went in a different direction", ended: true },
+      ],
+    },
+    {
+      id: "sofia", status: "ended", when: "Jun 2026",
+      outcome: "You chose not to continue after your conversation with Marcus.",
+      person: { photo: null, name: "Sofia Lindqvist", role: "Head of People Operations", company: "Brightline Health", experienceYears: "12", experience: "Built Brightline’s people team from 5 to 90 during its Series B.", skills: ["Team building", "Systems thinking"], values: ["Generosity", "Curiosity", "Humility"], workingStyle: ["Highly collaborative", "Written decisions"], personality: ["Warm", "Reflective", "Playful"], mindset: "People do their best work when they feel seen." },
+      steps: [
+        { title: "Matched with Sofia Lindqvist", note: "Jun 2", done: true },
+        { title: `Listened to Sofia’s ${PODCAST} episode`, note: "Jun 4", done: true },
+        { title: "Conversation with Dr. Marcus Hale", note: "Jun 9", done: true },
+        { title: "Introduction ended", note: "You chose not to continue", ended: true },
+      ],
+    },
+  ];
+
   // Same choices and limits as "Build your card" in Prototype 3
   const TECH_SKILLS = ["Systems thinking", "Operations", "Product strategy", "Go-to-market", "Data analysis", "Fundraising", "Engineering leadership", "Brand"];
   const PERSONAL_SKILLS = ["Team building", "Negotiation"];
@@ -81,7 +108,8 @@
     editErrors: false, // show what's missing after a failed save
     chipDrafts: {}, // text typed into each "Add your own" box
     savedNote: false, // "Card saved" notice
-    settings: { email: true, keepHistory: false, keepCard: true },
+    settings: { email: true, keepHistory: true, keepCard: true }, // Jordan opted in to keeping match history
+    open: { matches: null, introductions: null }, // which match row is expanded on each page
     modal: null, // "optout"
     optedOut: false,
   };
@@ -109,6 +137,7 @@
     "profile-card": '<path d="M4 6.375h13.5L22 10.875v4.75a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7.25a2 2 0 0 1 2-2z"/><path d="M17.5 6.375v3a1.5 1.5 0 0 0 1.5 1.5h3"/><circle cx="12" cy="10.4" r="2.1"/><path d="M8.6 15.6a3.4 3.4 0 0 1 6.8 0"/>',
     settings: '<path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/>',
     house: '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+    "chevron-down": '<path d="m6 9 6 6 6-6"/>',
     "arrow-right": '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
     check: '<path d="M20 6 9 17l-5-5"/>',
     x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
@@ -135,11 +164,32 @@
     const set = new Set(b.map((x) => x.toLowerCase()));
     return a.filter((x) => set.has(x.toLowerCase()));
   }
-  function overlap() {
-    const a = state.card, m = HIRING_MANAGER;
+  function overlap(m = HIRING_MANAGER) {
+    const a = state.card;
     return { skills: shared(a.skills, m.skills), values: shared(a.values, m.values), style: [...shared(a.workingStyle, m.workingStyle), ...shared(a.personality, m.personality)] };
   }
-  const avatar = (p, cls) => `<div class="${cx("shrink-0 overflow-hidden bg-muted", cls)}"><img src="${esc(p.photo)}" alt="" class="size-full object-cover"></div>`;
+  const initials = (n) => n.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("");
+  const avatar = (p, cls) => `<div class="${cx("shrink-0 overflow-hidden bg-muted", cls)}">${p.photo ? `<img src="${esc(p.photo)}" alt="" class="size-full object-cover">` : `<div class="k-initials">${esc(initials(p.name))}</div>`}</div>`;
+  // Every match, current first. Past ones only if the applicant keeps their match history.
+  function allMatches() {
+    const current = { id: "elena", status: INTRODUCED ? "introduced" : "current", when: "Nov 2026", person: HIRING_MANAGER, steps: JOURNEY, isCurrent: true };
+    return [current, ...(state.settings.keepHistory ? PAST_MATCHES : [])];
+  }
+  const STATUS = { current: "In progress", introduced: "Introduced", ended: "Ended" };
+  // A match as a compact rectangle; click to expand and show its details
+  function matchRow(page, m, inner) {
+    const open = state.open[page] === m.id, p = m.person;
+    return `<div class="${cx("k-row", open && "is-open")}">
+      <button type="button" class="k-row-head" data-action="row" data-page="${page}" data-id="${m.id}" aria-expanded="${open}">
+        ${avatar(p, "k-row-avatar")}
+        <span class="k-row-main"><span class="k-row-name">${esc(p.name)}</span><span class="k-row-sub">${esc([p.role, p.company].filter(Boolean).join(" · "))}</span></span>
+        <span class="k-row-when">${esc(m.when)}</span>
+        <span class="k-status is-${m.status}">${STATUS[m.status]}</span>
+        ${icon("chevron-down", "k-row-chevron")}
+      </button>
+      ${open ? `<div class="k-row-body">${inner}</div>` : ""}
+    </div>`;
+  }
   const chips = (items) => `<ul class="k-chips">${items.map((i) => `<li class="k-chip">${esc(i)}</li>`).join("")}</ul>`;
 
   // Same profile card as the prototype, read-only
@@ -188,7 +238,7 @@
     return `<div class="k-greeting"><p class="k-eyebrow" style="justify-content:center">${icon("sparkles")}${INTRODUCED ? "You’ve been introduced" : "Your introduction is in progress"}</p>
         <h1>Welcome back, ${esc(first(me().name))}.</h1></div>
       <div class="k-tiles">
-        ${tile("matches", "heart", "Your Matches", `Your current match is ${esc(other.name)}${other.company ? `, ${esc(other.company)}` : ""}.`, "See why you were matched", "1 current")}
+        ${tile("matches", "heart", "Your Matches", `Your current match is ${esc(other.name)}${other.company ? `, ${esc(other.company)}` : ""}.`, "See why you were matched", state.settings.keepHistory ? `1 current · ${PAST_MATCHES.length} past` : "1 current")}
         ${INTRODUCED
           ? tile("introductions", "send", "Your Introductions", `You and ${esc(first(other.name))} have been introduced.`, "See all 7 steps", "Complete")
           : tile("introductions", "send", "Your Introductions", esc(current.title + "."), esc(current.note), `Step ${stepNo} of ${JOURNEY.length}`)}
@@ -200,34 +250,35 @@
   }
 
   function matchesPage() {
-    const other = them(), o = overlap();
-    const hl = new Set([...o.skills, ...o.values, ...o.style].map((x) => x.toLowerCase()));
-    const why = (title, ic, items) => `<div class="k-panel"><p class="k-panel-title">${icon(ic)}${title} · ${items.length}</p>${items.length ? chips(items) : '<p class="text-sm text-muted-foreground">Complementary rather than shared</p>'}</div>`;
-    return `${subHeading("heart", "Your matches", "Your Matches", `Every match is chosen by hand by Culminate Strategy Group. You can’t browse hiring managers: you get one introduction at a time.`)}
-      <div class="k-two">
-        <div>${profileCard(other, "Current match", hl)}</div>
+    const [current, ...past] = allMatches();
+    const detail = (m) => {
+      const o = overlap(m.person), hl = new Set([...o.skills, ...o.values, ...o.style].map((x) => x.toLowerCase()));
+      const why = (title, ic, items) => `<div class="k-panel"><p class="k-panel-title">${icon(ic)}${title} · ${items.length}</p>${items.length ? chips(items) : '<p class="text-sm text-muted-foreground">Complementary rather than shared</p>'}</div>`;
+      return `<div class="k-two">
+        <div>${profileCard(m.person, m.isCurrent ? "Current match" : "Past match", hl)}</div>
         <div>
-          <div class="k-panel">
-            <p class="k-panel-title">${icon("sparkles")}Why you were matched</p>
-            <p class="text-base leading-relaxed">You and ${esc(first(other.name))} both run on candor and ownership, prefer written decisions over meetings, and stay calm when things get chaotic. That’s the mindset CSG looks for in a match.</p>
-          </div>
+          ${m.outcome ? `<div class="k-panel"><p class="k-panel-title">${icon("history")}How it ended</p><p class="text-base leading-relaxed">${esc(m.outcome)}</p></div>` : ""}
+          ${m.isCurrent ? `<div class="k-panel"><p class="k-panel-title">${icon("sparkles")}Why you were matched</p><p class="text-base leading-relaxed">You and ${esc(first(m.person.name))} both run on candor and ownership, prefer written decisions over meetings, and stay calm when things get chaotic. That’s the mindset CSG looks for in a match.</p></div>` : ""}
           ${why("Overlapping skills", "puzzle", o.skills)}${why("Matching values", "heart", o.values)}${why("Working style & personality", "smile", o.style)}
-          <div class="k-panel">
-            <p class="k-panel-title">${icon("history")}Past matches</p>
-            ${state.settings.keepHistory
-              ? `<div class="k-empty">${icon("history", "size-6")}<p>No past matches yet. When an introduction ends, it’ll be kept here.</p></div>`
-              : `<div class="k-empty">${icon("lock", "size-6")}<p>Katalyzr only keeps past matches if you opt in.</p><button type="button" class="k-link" data-action="view" data-view="settings">Turn on match history in Settings</button></div>`}
-          </div>
         </div>
-      </div>
+      </div>`;
+    };
+    return `${subHeading("heart", "Your matches", "Your Matches", "Every match is chosen by hand by Culminate Strategy Group. You can’t browse hiring managers: you get one introduction at a time. Click a match to see their card.")}
+      <p class="k-list-title">Current match</p>
+      <div class="k-list">${matchRow("matches", current, detail(current))}</div>
+      <p class="k-list-title">Past matches${state.settings.keepHistory ? ` · ${past.length}` : ""}</p>
+      ${state.settings.keepHistory
+        ? (past.length ? `<div class="k-list">${past.map((m) => matchRow("matches", m, detail(m))).join("")}</div>` : `<div class="k-empty">${icon("history", "size-6")}<p>No past matches yet. When an introduction ends, it’ll be kept here.</p></div>`)
+        : `<div class="k-empty">${icon("lock", "size-6")}<p>Katalyzr only keeps past matches if you opt in.</p><button type="button" class="k-link" data-action="view" data-view="settings">Turn on match history in Settings</button></div>`}
       ${homeTile()}`;
   }
 
   function introductionsPage() {
-    const items = JOURNEY.map((s, i) => {
-      const status = s.done ? "is-done" : s.current ? "is-current" : "is-upcoming";
-      return `<li class="k-step ${status}"><span class="k-dot">${s.done ? icon("check") : i + 1}</span><div><p class="k-step-title">${esc(s.title)}</p><p class="k-step-note">${esc(s.note)}</p></div></li>`;
-    }).join("");
+    const [current, ...past] = allMatches();
+    const timeline = (steps) => `<ol class="k-timeline">${steps.map((s, i) => {
+      const status = s.ended ? "is-ended" : s.done ? "is-done" : s.current ? "is-current" : "is-upcoming";
+      return `<li class="k-step ${status}"><span class="k-dot">${s.ended ? icon("x") : s.done ? icon("check") : i + 1}</span><div><p class="k-step-title">${esc(s.title)}</p><p class="k-step-note">${esc(s.note)}</p></div></li>`;
+    }).join("")}</ol>`;
     const next = INTRODUCED
       ? `<p class="k-panel-title">${icon("circle-check")}Where things stand</p>
           <div class="flex items-center gap-3">${avatar(HIRING_MANAGER, "size-12 rounded-full")}<div><p class="font-semibold">You’ve been introduced to Elena</p><p class="text-sm text-muted-foreground">You now have each other’s details</p></div></div>
@@ -235,11 +286,12 @@
       : `<p class="k-panel-title">${icon("calendar-check")}Next up</p>
           <div class="flex items-center gap-3">${avatar(PSYCH, "size-12 rounded-full")}<div><p class="font-semibold">Your conversation with Dr. Marcus Hale</p><p class="text-sm text-muted-foreground">Thu, Nov 12 · 2:00 PM · in Katalyzr</p></div></div>
           <p class="mt-4 text-sm text-muted-foreground">Not a test: Marcus is your advocate. Afterwards you approve the Mindset brief he shares with Elena.</p>`;
+    const body = (m) => `<div class="k-row-steps">${m.outcome ? `<p class="mb-4 text-sm text-muted-foreground">${esc(m.outcome)}</p>` : ""}${timeline(m.steps)}</div>`;
     return `${subHeading("send", "Your introductions", "Your Introductions", INTRODUCED ? "Your introduction to Elena is complete: two conversations, start to finish." : "Where your introduction to Elena stands. Two conversations, then you’re done.")}
-      <div class="k-two">
-        <div class="k-panel">${next}</div>
-        <div class="k-panel"><p class="k-panel-title">${icon("send")}Introduction with Elena Vasquez</p><ol class="k-timeline">${items}</ol></div>
-      </div>
+      <div class="k-panel" style="margin-bottom:2rem">${next}</div>
+      <p class="k-list-title">Current introduction</p>
+      <div class="k-list">${matchRow("introductions", current, body(current))}</div>
+      ${state.settings.keepHistory && past.length ? `<p class="k-list-title">Past introductions · ${past.length}</p><div class="k-list">${past.map((m) => matchRow("introductions", m, body(m))).join("")}</div>` : ""}
       ${homeTile()}`;
   }
 
@@ -389,7 +441,7 @@
     if (!el || el.disabled) return;
     const d = el.dataset;
     switch (d.action) {
-      case "view": state.view = d.view; state.edit = null; state.savedNote = false; render(); return window.scrollTo({ top: 0 });
+      case "view": state.view = d.view; state.edit = null; state.savedNote = false; state.open = { matches: null, introductions: null }; render(); return window.scrollTo({ top: 0 });
       case "edit-start": state.edit = JSON.parse(JSON.stringify(state.card)); state.editErrors = false; state.chipDrafts = {}; state.savedNote = false; render(); return window.scrollTo({ top: 0 });
       case "edit-cancel": state.edit = null; render(); return window.scrollTo({ top: 0 });
       case "sample-photo": state.edit.photo = APPLICANT.photo; return render();
@@ -400,6 +452,7 @@
       }
       case "chip-add": return addChip(d.key);
       case "toggle": state.settings[d.key] = !state.settings[d.key]; return render();
+      case "row": state.open[d.page] = state.open[d.page] === d.id ? null : d.id; return render();
       case "modal": state.modal = d.modal; return render();
       case "close-modal": state.modal = null; return render();
       case "confirm-optout": state.modal = null; state.optedOut = true; return render();
