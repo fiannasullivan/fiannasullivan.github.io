@@ -139,7 +139,7 @@
     brief: { approved: false, editing: false, note: "", noteSent: false }, // step 5: the Mindset brief the applicant approves
   };
   function freshBookings() {
-    const blank = () => ({ month: null, date: null, time: null, confirmed: false });
+    const blank = () => ({ month: null, date: null, time: null, confirmed: false, skipped: false });
     return { psychologist: blank(), "hiring-manager": blank() };
   }
   let timers = [];
@@ -889,6 +889,17 @@
     if (seed % 6 === 0) return []; // fully booked that day
     return SLOT_TIMES.filter((_, i) => (seed + i) % 3 !== 0);
   }
+  // The booked call's start as a Date (times are Central; the prototype treats them as local time)
+  function bookedStart(kind) {
+    const b = state.booking[kind];
+    const [, h, m, ap] = b.time.match(/(\d+):(\d+) (AM|PM)/);
+    const d = fromYmd(b.date);
+    d.setHours((Number(h) % 12) + (ap === "PM" ? 12 : 0), Number(m), 0, 0);
+    return d;
+  }
+  // "Join video call" stays greyed out until the booked time (or the prototype's "Skip to time")
+  const callIsOpen = (kind) => state.booking[kind].skipped || Date.now() >= bookedStart(kind).getTime();
+
   function bookingCalendar(kind, cfg) {
     const b = state.booking[kind], { start } = bookingWindow(kind);
     const month = b.month ? fromYmd(b.month) : new Date(start.getFullYear(), start.getMonth(), 1);
@@ -957,11 +968,16 @@
             ${avatar(a, "size-20 rounded-full border-4 border-card")}${avatar(cfg.remote, "size-20 rounded-full border-4 border-card")}${kind === "hiring-manager" ? avatar(PSYCH, "size-20 rounded-full border-4 border-card") : ""}
           </div>
           <div>
-            <p class="flex items-center justify-center gap-2 text-sm text-muted-foreground">${icon("calendar-check", "size-4")}Booked for ${esc(prettyDay(state.booking[kind].date))} · ${state.booking[kind].time} CT · <button type="button" data-action="cal-reschedule" data-kind="${kind}" class="underline decoration-dotted underline-offset-4 hover:text-foreground">Reschedule</button></p>
-            <p class="mt-2 font-serif text-3xl">You’re booked with ${esc(cfg.remote.name)}.</p>
-            <p class="mt-2 text-sm text-muted-foreground">We’ll email a reminder the day before. When it’s time, join right here.</p>
+            <p class="flex items-center justify-center gap-2 text-sm text-muted-foreground">${icon("calendar-check", "size-4")}Booked for ${esc(prettyDay(state.booking[kind].date))} · ${state.booking[kind].time} CT</p>
+            <p class="mt-2 font-serif text-3xl">${callIsOpen(kind) ? `It’s time. ${esc(cfg.remote.name)} is ready when you are.` : `You’re booked with ${esc(cfg.remote.name)}.`}</p>
+            <p class="mt-2 text-sm text-muted-foreground">${callIsOpen(kind) ? "Join whenever you’re ready." : `The call opens at ${state.booking[kind].time} on ${esc(prettyDay(state.booking[kind].date))}. We’ll email a reminder the day before.`}</p>
           </div>
-          ${button({ size: "lg", className: "csg-cta h-12 gap-2 rounded-full px-6 text-base", attrs: 'data-action="join"', content: icon("video", "size-4") + "Join video call" })}
+          <div class="flex items-center gap-3">
+            ${button({ size: "lg", className: cx("h-12 gap-2 rounded-full px-6 text-base", callIsOpen(kind) && "csg-cta"), attrs: `data-action="join"${callIsOpen(kind) ? "" : ' disabled title="Opens at your booked time"'}`, content: icon(callIsOpen(kind) ? "video" : "lock", "size-4") + "Join video call" })}
+            ${button({ variant: "outline", className: "h-12 gap-2 rounded-full px-5 text-base", attrs: `data-action="cal-reschedule" data-kind="${kind}"`, content: icon("calendar-check", "size-4") + "Change date" })}
+          </div>
+          ${callIsOpen(kind) ? "" : `<!-- Prototype only: jump to the booked time so nobody has to wait. Remove for the final app. -->
+          <button type="button" data-action="cal-skip" data-kind="${kind}" class="k-proto-skip">${icon("clock", "size-3.5")}Prototype only · Skip to time</button>`}
         </section>${kind === "psychologist" ? whoBenefits() : ""}</div>`}
       </div></div>`;
   }
@@ -1106,7 +1122,8 @@
       case "cal-day": { const b = state.booking[el.dataset.kind]; b.date = el.dataset.date; b.time = null; return render(); }
       case "cal-time": state.booking[el.dataset.kind].time = el.dataset.time; return render();
       case "cal-confirm": { const b = state.booking[el.dataset.kind]; if (b.date && b.time) { b.confirmed = true; render(true); window.scrollTo({ top: 0, behavior: "smooth" }); } return; }
-      case "cal-reschedule": state.booking[el.dataset.kind].confirmed = false; return render();
+      case "cal-reschedule": { const b = state.booking[el.dataset.kind]; b.confirmed = false; b.skipped = false; return render(); }
+      case "cal-skip": state.booking[el.dataset.kind].skipped = true; return render();
       case "end-call":
         if (state.step === "psychologist") { clearTimers(); c.joined = false; c.ended = true; render(true); return window.scrollTo({ top: 0, behavior: "smooth" }); }
         return goTo(el.dataset.next);
@@ -1148,6 +1165,15 @@
     if (checklist(state.applicant).every((c) => c.done)) goTo("waiting");
     else { state.showErrors = true; render(); }
   });
+
+  // When the booked time arrives while someone is on the page, unlock "Join video call"
+  setInterval(() => {
+    const k = state.step;
+    if ((k === "psychologist" || k === "hiring-manager") && !state.call.joined && !state.modal && state.booking[k].confirmed && !state.booking[k].skipped) {
+      const btn = document.querySelector('[data-action="join"]');
+      if (btn && btn.disabled && callIsOpen(k)) render();
+    }
+  }, 30000);
 
   render(true);
 })();
