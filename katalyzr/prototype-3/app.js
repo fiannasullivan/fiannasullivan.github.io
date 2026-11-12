@@ -129,7 +129,8 @@
     showErrors: false,
     chipDrafts: {},
     flipped: false, // step 2: has the match card been flipped over?
-    modal: null, // welcome: "how" (How did you find me?) or "optout" (confirm opt-out)
+    modal: null, // "how" (How did you find me?), "optout", "why-psych", or "linkedin" (fill card from LinkedIn)
+    linkedin: { url: "", status: "idle", error: "", imported: false }, // step 1: fill the card from a LinkedIn profile
     optedOut: false, // welcome: applicant declined the invitation
     optOutReason: "",
     player: { time: 0, playing: false, speed: 1, chaptersOpen: false },
@@ -159,7 +160,7 @@
     startStepTimers();
   }
   function updateApplicant(patch) { state.applicant = { ...state.applicant, ...patch }; render(); }
-  function restart() { state.applicant = { ...EMPTY_APPLICANT }; state.optedOut = false; state.optOutReason = ""; state.brief = { approved: false, editing: false, note: "", noteSent: false }; goTo("welcome"); }
+  function restart() { state.applicant = { ...EMPTY_APPLICANT }; state.optedOut = false; state.optOutReason = ""; state.brief = { approved: false, editing: false, note: "", noteSent: false }; state.linkedin = { url: "", status: "idle", error: "", imported: false }; goTo("welcome"); }
 
   /* ---------- Helpers ---------- */
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -247,6 +248,8 @@
     house: '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
     send: '<path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/>',
     settings: '<path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/>',
+    // Custom: LinkedIn-style "in" badge
+    linkedin: '<rect x="2.5" y="2.5" width="19" height="19" rx="4"/><path d="M8 11v6"/><path d="M8 7.5v.01"/><path d="M12 17v-6"/><path d="M12 13.5a2.5 2.5 0 0 1 5 0V17"/>',
     "list-checks": '<path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/>',
   };
   const icon = (name, cls = "") =>
@@ -499,6 +502,26 @@
           <button type="button" data-action="modal" data-modal="optout" class="text-sm text-muted-foreground underline decoration-dotted underline-offset-4 hover:text-foreground">I’d rather opt out</button>
           ${button({ size: "lg", className: "csg-cta h-11 gap-2 rounded-full px-5", attrs: 'data-action="close-modal"', content: "Got it" })}
         </div>`;
+    } else if (state.modal === "linkedin") {
+      const li = state.linkedin, loading = li.status === "loading";
+      body = `<p class="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">${icon("linkedin", "size-4")}Fill from LinkedIn</p>
+        <h2 id="modal-title" class="font-serif text-3xl leading-tight">Start your card from LinkedIn</h2>
+        <p class="mt-3 text-base leading-relaxed text-muted-foreground">Paste a link to your LinkedIn profile and we’ll fill in what’s already there, so you don’t have to type it twice.</p>
+        <div class="mt-6 grid grid-cols-2 gap-4">
+          <div class="rounded-xl border bg-card/70 p-4"><p class="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${icon("check", "size-3.5 text-primary")}We’ll fill in</p>
+            <ul class="flex flex-col gap-1 text-sm"><li>Photo</li><li>Name and current role</li><li>Years of experience</li><li>What you’ve built</li><li>Skills</li></ul></div>
+          <div class="rounded-xl border bg-card/70 p-4"><p class="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${icon("user-round", "size-3.5 text-brass")}You’ll choose</p>
+            <ul class="flex flex-col gap-1 text-sm"><li>Values</li><li>Working style</li><li>Personality</li><li>Mindset</li></ul></div>
+        </div>
+        <div class="mt-6 flex flex-col gap-1.5">
+          <label for="li-url" class="text-sm font-medium">Your LinkedIn profile link</label>
+          <input id="li-url" type="url" inputmode="url" autocomplete="url" value="${esc(li.url)}" placeholder="linkedin.com/in/your-name"${loading ? " disabled" : ""} class="${cx(INPUT, li.error && INVALID)}">
+          ${li.error ? `<p class="text-sm" style="color:var(--csg-coral-deep)">${esc(li.error)}</p>` : `<p class="text-xs text-muted-foreground">Read through LinkedIn’s official API. You can edit anything afterwards.</p>`}
+        </div>
+        <div class="mt-8 flex items-center justify-end gap-3 border-t pt-5">
+          ${button({ variant: "outline", className: "h-11 rounded-full px-5", attrs: `data-action="close-modal"${loading ? " disabled" : ""}`, content: "Cancel" })}
+          ${button({ size: "lg", className: "csg-cta h-11 gap-2 rounded-full px-5", attrs: `data-action="li-import"${loading ? " disabled" : ""}`, content: loading ? "Reading your profile…" : icon("linkedin", "size-4") + "Fill my card" })}
+        </div>`;
     } else if (state.modal === "why-psych") {
       const item = (ic, title, text) => `<li class="flex gap-4">${iconTile(ic)}<div><p class="font-medium">${title}</p><p class="mt-1 text-sm leading-relaxed text-muted-foreground">${text}</p></div></li>`;
       const hm = firstName(MATCH.name);
@@ -576,7 +599,10 @@
     return `<div>
       <div class="flex items-end justify-between">
         ${pageHeading({ eyebrow: "Step 1 · Build your card", title: "This is how you’ll be introduced.", description: "Your card is what your match sees first. Keep it honest and specific — it updates as you type." })}
-        ${button({ variant: "outline", className: "mb-8 gap-2 rounded-full", attrs: 'data-action="fill-sample"', content: icon("sparkles", "size-4") + "Fill with sample" })}
+        <div class="mb-8 flex items-center gap-3">
+          ${button({ variant: "outline", className: "gap-2 rounded-full", attrs: 'data-action="fill-sample"', content: icon("sparkles", "size-4") + "Fill with sample" })}
+          ${button({ size: "lg", className: "csg-cta gap-2 rounded-full px-4", attrs: 'data-action="modal" data-modal="linkedin"', content: icon("linkedin", "size-4") + "Fill from LinkedIn" })}
+        </div>
       </div>
       <div class="grid grid-cols-[360px_minmax(0,1fr)] items-start gap-10">
         <div class="sticky top-6 flex flex-col gap-4">
@@ -588,6 +614,7 @@
           </div>
         </div>
         <form id="build-form" class="flex flex-col gap-8 rounded-2xl border bg-card p-8" novalidate>
+          ${state.linkedin.imported ? `<div class="k-li-banner" role="status">${icon("linkedin", "size-5")}<div><p class="font-medium">Filled from your LinkedIn profile</p><p class="text-sm text-muted-foreground">We added your photo, name, role, experience and skills. Check them, then choose your values, working style, personality and mindset below. Those aren’t on LinkedIn, so they’re yours to pick.</p></div><button type="button" data-action="li-dismiss" class="rounded-full p-1 text-muted-foreground hover:text-foreground" aria-label="Dismiss">${icon("x", "size-4")}</button></div>` : ""}
           ${section("The basics", `
             <div class="${cx("flex items-center gap-4 rounded-lg", err(!a.photo) && "outline-2 outline-offset-4 outline-red-500")}">
               ${avatar(a, "size-16 rounded-full")}
@@ -926,6 +953,27 @@
     }, 1000));
   }
 
+  /* ---------- Fill from LinkedIn ---------- */
+  // Prototype: a real build would read the profile through LinkedIn's official API.
+  // Here any valid profile link fills in the sample applicant's LinkedIn details after a short wait.
+  function importFromLinkedIn() {
+    const li = state.linkedin;
+    if (li.status === "loading") return;
+    if (!/linkedin\.com\/in\/[\w%-]+/i.test(li.url.trim())) {
+      li.error = "That doesn’t look like a LinkedIn profile link. It should look like linkedin.com/in/your-name.";
+      render();
+      const el = document.getElementById("li-url"); if (el) el.focus();
+      return;
+    }
+    li.error = ""; li.status = "loading"; render();
+    setTimeout(() => {
+      const s = SAMPLE_APPLICANT;
+      updateApplicant({ photo: s.photo, name: s.name, role: s.role, experienceYears: s.experienceYears, experience: s.experience, skills: [...s.skills] });
+      li.status = "idle"; li.imported = true; state.modal = null; state.showErrors = false;
+      render();
+    }, 1600);
+  }
+
   /* ---------- Events ---------- */
   function addChip(key) {
     const g = chipGroups()[key], v = (state.chipDrafts[key] || "").trim();
@@ -941,7 +989,7 @@
     switch (action) {
       case "goto": return goTo(el.dataset.step);
       case "restart": return restart();
-      case "modal": state.modal = el.dataset.modal; render(); { const m = document.querySelector(".k-modal button, .k-modal input"); if (m) m.focus(); } return;
+      case "modal": state.modal = el.dataset.modal; state.linkedin.error = ""; render(); { const m = document.querySelector(".k-modal input[type=url]") || document.querySelector(".k-modal button, .k-modal input"); if (m) m.focus(); } return;
       case "close-modal": state.modal = null; return render();
       case "confirm-optout": state.optedOut = true; state.modal = null; render(true); return window.scrollTo({ top: 0, behavior: "smooth" });
       case "undo-optout": state.optedOut = false; state.optOutReason = ""; return render(true);
@@ -953,6 +1001,8 @@
         return setTimeout(() => { if (state.step === "waiting") render(); }, 800); // then show the next button
       }
       case "fill-sample": state.applicant = { ...SAMPLE_APPLICANT }; return render();
+      case "li-import": return importFromLinkedIn();
+      case "li-dismiss": state.linkedin.imported = false; return render();
       case "sample-photo": return updateApplicant({ photo: SAMPLE_APPLICANT.photo });
       case "chip": {
         const g = chipGroups()[el.dataset.key], v = el.dataset.value;
@@ -983,6 +1033,7 @@
     const t = e.target;
     if (t.dataset.field) return updateApplicant({ [t.dataset.field]: t.value });
     if (t.id === "brief-note") { state.brief.note = t.value; return; }
+    if (t.id === "li-url") { state.linkedin.url = t.value; return; }
     if (t.dataset.chipInput) { state.chipDrafts[t.dataset.chipInput] = t.value; return render(); }
     if (t.id === "episode-scrubber") return seek(Number(t.value));
   });
@@ -993,7 +1044,8 @@
     if (t.id === "f-photo" && t.files && t.files[0]) return updateApplicant({ photo: URL.createObjectURL(t.files[0]) });
   });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && state.modal) { state.modal = null; render(); }
+    if (e.key === "Escape" && state.modal && state.linkedin.status !== "loading") { state.modal = null; render(); }
+    if (e.key === "Enter" && e.target.id === "li-url") { e.preventDefault(); importFromLinkedIn(); }
   });
   root.addEventListener("keydown", (e) => {
     const t = e.target;
