@@ -131,12 +131,17 @@
     flipped: false, // step 2: has the match card been flipped over?
     modal: null, // "how" (How did you find me?), "optout", "why-psych", or "linkedin" (fill card from LinkedIn)
     linkedin: { url: "", status: "idle", error: "", imported: false }, // step 1: fill the card from a LinkedIn profile
+    booking: freshBookings(), // steps 5 & 6: the day and time picked for each interview
     optedOut: false, // welcome: applicant declined the invitation
     optOutReason: "",
     player: { time: 0, playing: false, speed: 1, chaptersOpen: false },
     call: { joined: false, ended: false, seconds: 0, mic: true, cam: true, captions: true },
     brief: { approved: false, editing: false, note: "", noteSent: false }, // step 5: the Mindset brief the applicant approves
   };
+  function freshBookings() {
+    const blank = () => ({ month: null, date: null, time: null, confirmed: false });
+    return { psychologist: blank(), "hiring-manager": blank() };
+  }
   let timers = [];
   const clearTimers = () => { timers.forEach((t) => clearInterval(t)); timers = []; };
 
@@ -160,7 +165,7 @@
     startStepTimers();
   }
   function updateApplicant(patch) { state.applicant = { ...state.applicant, ...patch }; render(); }
-  function restart() { state.applicant = { ...EMPTY_APPLICANT }; state.optedOut = false; state.optOutReason = ""; state.brief = { approved: false, editing: false, note: "", noteSent: false }; state.linkedin = { url: "", status: "idle", error: "", imported: false }; goTo("welcome"); }
+  function restart() { state.applicant = { ...EMPTY_APPLICANT }; state.optedOut = false; state.optOutReason = ""; state.brief = { approved: false, editing: false, note: "", noteSent: false }; state.linkedin = { url: "", status: "idle", error: "", imported: false }; state.booking = freshBookings(); goTo("welcome"); }
 
   /* ---------- Helpers ---------- */
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -250,6 +255,9 @@
     settings: '<path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/>',
     // Custom: LinkedIn-style "in" badge
     linkedin: '<rect x="2.5" y="2.5" width="19" height="19" rx="4"/><path d="M8 11v6"/><path d="M8 7.5v.01"/><path d="M12 17v-6"/><path d="M12 13.5a2.5 2.5 0 0 1 5 0V17"/>',
+    "chevron-left": '<path d="m15 18-6-6 6-6"/>',
+    "chevron-right": '<path d="m9 18 6-6-6-6"/>',
+    clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
     "list-checks": '<path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/>',
   };
   const icon = (name, cls = "") =>
@@ -856,6 +864,77 @@
     </section>`;
   }
 
+  /* ---------- Booking calendar (steps 5 & 6) ---------- */
+  // Prototype availability: weekdays from tomorrow for 5 weeks, with a few days and times taken.
+  // A real build would read the psychologist's and hiring manager's calendars.
+  const SLOT_TIMES = ["9:00 AM", "10:30 AM", "12:00 PM", "1:00 PM", "2:00 PM", "3:30 PM", "4:30 PM"];
+  const LENGTH = { psychologist: "30 minutes", "hiring-manager": "45 minutes" };
+  const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const fromYmd = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+  const prettyDay = (s) => fromYmd(s).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  const shortDay = (s) => fromYmd(s).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  function bookingWindow(kind) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    let start = new Date(today); start.setDate(start.getDate() + 1);
+    // The hiring manager interview has to come after the psychologist conversation
+    const psych = state.booking.psychologist;
+    if (kind === "hiring-manager" && psych.confirmed && psych.date) { const p = fromYmd(psych.date); p.setDate(p.getDate() + 1); if (p > start) start = p; }
+    const end = new Date(start); end.setDate(end.getDate() + 35);
+    return { start, end };
+  }
+  function slotsFor(kind, dateStr) {
+    const d = fromYmd(dateStr), { start, end } = bookingWindow(kind);
+    if (d < start || d > end || d.getDay() === 0 || d.getDay() === 6) return [];
+    const seed = d.getDate() * 7 + d.getMonth() * 3 + (kind === "psychologist" ? 0 : 2);
+    if (seed % 6 === 0) return []; // fully booked that day
+    return SLOT_TIMES.filter((_, i) => (seed + i) % 3 !== 0);
+  }
+  function bookingCalendar(kind, cfg) {
+    const b = state.booking[kind], { start } = bookingWindow(kind);
+    const month = b.month ? fromYmd(b.month) : new Date(start.getFullYear(), start.getMonth(), 1);
+    const first = new Date(month.getFullYear(), month.getMonth(), 1);
+    const lead = (first.getDay() + 6) % 7; // Monday-first grid
+    const days = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+    const startMonth = new Date(start.getFullYear(), start.getMonth(), 1);
+    const canPrev = first > startMonth, canNext = first < new Date(startMonth.getFullYear(), startMonth.getMonth() + 1, 1);
+    const cells = [];
+    for (let i = 0; i < lead; i++) cells.push('<span class="k-cal-day is-blank"></span>');
+    for (let n = 1; n <= days; n++) {
+      const ds = ymd(new Date(month.getFullYear(), month.getMonth(), n)), open = slotsFor(kind, ds).length > 0, sel = b.date === ds;
+      cells.push(open
+        ? `<button type="button" class="${cx("k-cal-day is-open", sel && "is-selected")}" data-action="cal-day" data-kind="${kind}" data-date="${ds}" aria-pressed="${sel}" aria-label="${prettyDay(ds)}">${n}</button>`
+        : `<span class="k-cal-day" aria-hidden="true">${n}</span>`);
+    }
+    const times = b.date ? slotsFor(kind, b.date) : [];
+    const who = cfg.remote.name;
+    return `<section aria-label="Book your ${kind === "psychologist" ? "psychologist" : "hiring manager"} interview" class="${cx("rounded-2xl border bg-card p-8", anim("animate-in fade-in duration-500"))}">
+      <p class="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">${icon("calendar-check", "size-4")}Book your time</p>
+      <h2 class="font-serif text-3xl leading-tight">When works for you?</h2>
+      <p class="mt-2 text-base text-muted-foreground">Pick a day and time to meet ${esc(who)}. ${LENGTH[kind]}, by video in Katalyzr.${kind === "hiring-manager" && state.booking.psychologist.confirmed ? ` Days open after your conversation with Marcus on ${esc(shortDay(state.booking.psychologist.date))}.` : ""}</p>
+      <div class="k-cal mt-6">
+        <div>
+          <div class="k-cal-head">
+            <button type="button" class="k-cal-nav" data-action="cal-month" data-kind="${kind}" data-dir="-1"${canPrev ? "" : " disabled"} aria-label="Previous month">${icon("chevron-left", "size-4")}</button>
+            <p class="font-serif text-lg">${month.toLocaleDateString("en-US", { month: "long", year: "numeric" })}</p>
+            <button type="button" class="k-cal-nav" data-action="cal-month" data-kind="${kind}" data-dir="1"${canNext ? "" : " disabled"} aria-label="Next month">${icon("chevron-right", "size-4")}</button>
+          </div>
+          <div class="k-cal-grid">${["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => `<span class="k-cal-dow">${d}</span>`).join("")}${cells.join("")}</div>
+          <p class="mt-3 flex items-center gap-2 text-xs text-muted-foreground"><span class="k-cal-key"></span>Available</p>
+        </div>
+        <div class="k-cal-times">
+          ${b.date
+            ? `<p class="mb-3 text-sm font-medium">${esc(prettyDay(b.date))}</p>
+               <div class="flex flex-col gap-2">${times.map((t) => `<button type="button" class="${cx("k-cal-time", b.time === t && "is-selected")}" data-action="cal-time" data-kind="${kind}" data-time="${t}" aria-pressed="${b.time === t}">${t}</button>`).join("")}</div>`
+            : `<div class="k-cal-empty">${icon("calendar-check", "size-6")}<p>Choose a day to see open times.</p></div>`}
+        </div>
+      </div>
+      <div class="mt-6 flex items-center justify-between border-t pt-6">
+        <p class="flex items-center gap-2 text-xs text-muted-foreground">${icon("clock", "size-3.5")}Times shown in Central Time (CT)</p>
+        ${button({ size: "lg", className: "csg-cta h-11 gap-2 rounded-full px-5", attrs: `data-action="cal-confirm" data-kind="${kind}"${b.date && b.time ? "" : " disabled"}`, content: icon("check", "size-4") + (b.date && b.time ? `Book ${esc(shortDay(b.date))} at ${b.time}` : "Pick a day and time") })}
+      </div>
+    </section>`;
+  }
+
   function interviewScreen(kind) {
     const cfg = INTERVIEWS[kind], a = state.applicant, hl = connection(a, MATCH).highlight;
     return `<div>
@@ -873,13 +952,14 @@
           ${kind === "psychologist" ? advocateCard() : ""}
           ${kind === "hiring-manager" && state.brief.approved ? `<p class="flex items-center gap-1.5 px-1 text-xs text-muted-foreground">${icon("circle-check", "size-3.5 text-primary")}${esc(firstName(MATCH.name))} has read your approved Mindset brief</p>` : ""}
         </aside>
-        ${kind === "psychologist" && state.call.ended ? mindsetBrief() : state.call.joined ? videoCall(cfg) : `<div><section aria-label="Join the call" class="flex aspect-video flex-col items-center justify-center gap-6 rounded-2xl border bg-card p-10 text-center">
+        ${kind === "psychologist" && state.call.ended ? mindsetBrief() : state.call.joined ? videoCall(cfg) : !state.booking[kind].confirmed ? `<div>${bookingCalendar(kind, cfg)}${kind === "psychologist" ? whoBenefits() : ""}</div>` : `<div><section aria-label="Join the call" class="flex aspect-video flex-col items-center justify-center gap-6 rounded-2xl border bg-card p-10 text-center">
           <div class="flex items-center -space-x-4">
             ${avatar(a, "size-20 rounded-full border-4 border-card")}${avatar(cfg.remote, "size-20 rounded-full border-4 border-card")}${kind === "hiring-manager" ? avatar(PSYCH, "size-20 rounded-full border-4 border-card") : ""}
           </div>
           <div>
-            <p class="flex items-center justify-center gap-2 text-sm text-muted-foreground">${icon("calendar-check", "size-4")}Scheduled for today · 2:00 PM</p>
-            <p class="mt-2 font-serif text-3xl">${esc(cfg.remote.name)} is ready when you are.</p>
+            <p class="flex items-center justify-center gap-2 text-sm text-muted-foreground">${icon("calendar-check", "size-4")}Booked for ${esc(prettyDay(state.booking[kind].date))} · ${state.booking[kind].time} CT · <button type="button" data-action="cal-reschedule" data-kind="${kind}" class="underline decoration-dotted underline-offset-4 hover:text-foreground">Reschedule</button></p>
+            <p class="mt-2 font-serif text-3xl">You’re booked with ${esc(cfg.remote.name)}.</p>
+            <p class="mt-2 text-sm text-muted-foreground">We’ll email a reminder the day before. When it’s time, join right here.</p>
           </div>
           ${button({ size: "lg", className: "csg-cta h-12 gap-2 rounded-full px-6 text-base", attrs: 'data-action="join"', content: icon("video", "size-4") + "Join video call" })}
         </section>${kind === "psychologist" ? whoBenefits() : ""}</div>`}
@@ -1017,6 +1097,16 @@
       case "chapter": p.time = Number(el.dataset.start); p.playing = true; return render();
       case "listened": state.episodeListened = true; return render();
       case "join": c.joined = true; render(true); return startCallTimer();
+      case "cal-month": {
+        const b = state.booking[el.dataset.kind], { start } = bookingWindow(el.dataset.kind);
+        const cur = b.month ? fromYmd(b.month) : new Date(start.getFullYear(), start.getMonth(), 1);
+        b.month = ymd(new Date(cur.getFullYear(), cur.getMonth() + Number(el.dataset.dir), 1));
+        return render();
+      }
+      case "cal-day": { const b = state.booking[el.dataset.kind]; b.date = el.dataset.date; b.time = null; return render(); }
+      case "cal-time": state.booking[el.dataset.kind].time = el.dataset.time; return render();
+      case "cal-confirm": { const b = state.booking[el.dataset.kind]; if (b.date && b.time) { b.confirmed = true; render(true); window.scrollTo({ top: 0, behavior: "smooth" }); } return; }
+      case "cal-reschedule": state.booking[el.dataset.kind].confirmed = false; return render();
       case "end-call":
         if (state.step === "psychologist") { clearTimers(); c.joined = false; c.ended = true; render(true); return window.scrollTo({ top: 0, behavior: "smooth" }); }
         return goTo(el.dataset.next);
