@@ -100,6 +100,35 @@
     ];
   }
 
+  /* ---------- Saving (so a refresh keeps your place) ---------- */
+  // Prototype: kept in this browser's localStorage. A real build would save to the account.
+  const SAVE_KEY = "katalyzr-home-card"; // the applicant's card (edited in Your Profile)
+  const VIEW_KEY = "katalyzr-home-view-v1"; // which page you're on, open rows, settings, edit draft
+  const str = (v) => (typeof v === "string" ? v : v == null ? "" : String(v));
+  const strList = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string" && x.trim()) : []);
+  // Turns anything (old saves, blank fields, bad data) into a card the pages can safely draw
+  function cleanCard(c) {
+    c = c && typeof c === "object" ? c : {};
+    return {
+      photo: typeof c.photo === "string" && c.photo ? c.photo : null,
+      name: str(c.name), role: str(c.role), company: str(c.company),
+      experienceYears: str(c.experienceYears), experience: str(c.experience),
+      skills: strList(c.skills), customPersonalSkills: strList(c.customPersonalSkills),
+      values: strList(c.values), workingStyle: strList(c.workingStyle), personality: strList(c.personality),
+      mindset: str(c.mindset),
+    };
+  }
+  function readJSON(key) { try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; } }
+  function writeJSON(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (e) { return false; } }
+  function loadCard() {
+    const saved = readJSON(SAVE_KEY);
+    return saved && typeof saved === "object" && str(saved.name).trim() ? cleanCard(saved) : cleanCard(APPLICANT);
+  }
+  function saveCard(card) {
+    // If storage is full (a big photo), keep everything but the uploaded photo
+    if (!writeJSON(SAVE_KEY, card)) writeJSON(SAVE_KEY, { ...card, photo: APPLICANT.photo });
+  }
+
   /* ---------- State ---------- */
   const state = {
     view: "home", // "home" | "matches" | "introductions" | "profile" | "settings"
@@ -108,21 +137,15 @@
     editErrors: false, // show what's missing after a failed save
     chipDrafts: {}, // text typed into each "Add your own" box
     savedNote: false, // "Card saved" notice
+    photoError: "", // shown if an uploaded photo can't be read
     settings: { email: true, keepHistory: true, keepCard: true }, // Jordan opted in to keeping match history
     open: { matches: null, introductions: null }, // which match row is expanded on each page
     modal: null, // "optout"
     optedOut: false,
   };
-  // The applicant's card. Edits from Your Profile are saved in this browser (prototype only).
-  const SAVE_KEY = "katalyzr-home-card";
-  function loadCard() {
-    try { const saved = JSON.parse(localStorage.getItem(SAVE_KEY)); if (saved && saved.name) return saved; } catch (e) { /* storage off */ }
-    return { ...APPLICANT };
-  }
-  function saveCard(card) { try { localStorage.setItem(SAVE_KEY, JSON.stringify(card)); } catch (e) { /* storage off */ } }
   const me = () => state.card;
   const them = () => HIRING_MANAGER;
-  const first = (n) => n.split(" ")[0];
+  const first = (n) => str(n).trim().split(/\s+/)[0] || "";
 
   /* ---------- Helpers ---------- */
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -168,8 +191,8 @@
     const a = state.card;
     return { skills: shared(a.skills, m.skills), values: shared(a.values, m.values), style: [...shared(a.workingStyle, m.workingStyle), ...shared(a.personality, m.personality)] };
   }
-  const initials = (n) => n.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("");
-  const avatar = (p, cls) => `<div class="${cx("shrink-0 overflow-hidden bg-muted", cls)}">${p.photo ? `<img src="${esc(p.photo)}" alt="" class="size-full object-cover">` : `<div class="k-initials">${esc(initials(p.name))}</div>`}</div>`;
+  const initials = (n) => str(n).split(" ").filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("") || "?";
+  const avatar = (p, cls) => `<div class="${cx("shrink-0 overflow-hidden bg-muted", cls)}">${p.photo ? `<img src="${esc(p.photo)}" alt="" class="size-full object-cover" data-fallback="${esc(initials(p.name))}">` : `<div class="k-initials">${esc(initials(p.name))}</div>`}</div>`;
   // Every match, current first. Past ones only if the applicant keeps their match history.
   function allMatches() {
     const current = { id: "elena", status: INTRODUCED ? "introduced" : "current", when: "Nov 2026", person: HIRING_MANAGER, steps: JOURNEY, isCurrent: true };
@@ -202,7 +225,7 @@
         return `<li class="${cx("rounded-full border px-2.5 py-0.5 text-xs", on ? "border-brass/60 bg-accent text-accent-foreground" : "bg-secondary/60 text-secondary-foreground")}">${esc(i)}</li>`;
       }).join("")}</ul></div>`;
     return `<article aria-label="${esc(label)}: ${esc(p.name)}" class="flex w-full flex-col overflow-hidden rounded-2xl border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-12px_rgba(60,40,10,0.18)]">
-      <div class="relative aspect-[4/3] w-full bg-muted">${p.photo ? `<img src="${esc(p.photo)}" alt="Portrait of ${esc(p.name)}" class="size-full object-cover">` : `<div class="flex size-full items-center justify-center text-xs text-muted-foreground">No photo</div>`}
+      <div class="relative aspect-[4/3] w-full bg-muted">${p.photo ? `<img src="${esc(p.photo)}" alt="Portrait of ${esc(p.name)}" class="size-full object-cover" data-fallback="Photo unavailable">` : `<div class="flex size-full items-center justify-center text-xs text-muted-foreground">No photo</div>`}
         <span class="absolute left-3 top-3 rounded-full bg-card/90 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-foreground backdrop-blur">${esc(label)}</span></div>
       <div class="flex flex-col gap-4 p-5">
         <header><h3 class="font-serif text-3xl leading-tight">${esc(p.name || "Your name")}</h3><p class="text-sm text-muted-foreground">${esc(sub || "Current role")}</p>
@@ -246,7 +269,7 @@
         ${tile("settings", "settings", "Settings", "Notifications, what Katalyzr keeps, and opting out.", "Manage settings", "")}
       </div>
       <!-- Prototype only: lets Fianna jump back to the first-match flow (Prototype 3). Remove for the final app. -->
-      <a href="../prototype-3/" class="k-proto-link">${icon("rotate-ccw")}<span><strong>Back to the first match</strong><small>Prototype only · replays the invitation-to-introduction flow</small></span>${icon("arrow-right", "k-tile-arrow")}</a>`;
+      <a href="../prototype-3/?restart=1" class="k-proto-link">${icon("rotate-ccw")}<span><strong>Back to the first match</strong><small>Prototype only · replays the invitation-to-introduction flow</small></span>${icon("arrow-right", "k-tile-arrow")}</a>`;
   }
 
   function matchesPage() {
@@ -364,6 +387,7 @@
                 <button type="button" class="k-link" data-action="sample-photo">Use sample photo</button>
               </div>
             </div>
+            ${state.photoError ? `<p class="text-sm" role="alert" style="color:var(--csg-coral-deep)">${esc(state.photoError)}</p>` : ""}
             <div class="grid grid-cols-2 gap-4">
               ${field("Full name", "e-name", `<input id="e-name" data-field="name" class="${cx(INPUT, err(!d.name.trim()) && INVALID)}" value="${esc(d.name)}" autocomplete="name">`)}
               ${field("Current role", "e-role", `<input id="e-role" data-field="role" class="${cx(INPUT, err(!d.role.trim()) && INVALID)}" value="${esc(d.role)}">`)}
@@ -427,24 +451,101 @@
     const active = document.activeElement, focusId = active && active.id;
     let s1 = null, s2 = null;
     try { s1 = active.selectionStart; s2 = active.selectionEnd; } catch (e) { /* not a text field */ }
-    const body = state.optedOut ? optedOutPage() : PAGES[state.view]();
-    root.innerHTML = `<div class="k-page">${header()}<main class="k-main">${body}</main></div>${modal()}`;
+    try {
+      const body = state.optedOut ? optedOutPage() : (PAGES[state.view] || homePage)();
+      root.innerHTML = `<div class="k-page">${header()}<main class="k-main">${body}</main></div>${modal()}`;
+    } catch (err) {
+      console.error("Katalyzr: this page couldn’t be drawn", err);
+      root.innerHTML = errorPage();
+    }
+    saveView();
     if (focusId) {
       const el = document.getElementById(focusId);
       if (el && !el.disabled) { el.focus({ preventScroll: true }); try { if (s1 !== null) el.setSelectionRange(s1, s2); } catch (e) { /* number input */ } }
     }
   }
 
+  /* ---------- Error handling ---------- */
+  // Whole-page fallback if a page can't be drawn
+  function errorPage() {
+    let head = "";
+    try { head = header(); } catch (e) { /* draw without the header */ }
+    return `<div class="k-page">${head}<main class="k-main"><div class="k-greeting" style="max-width:36rem;margin:3rem auto">
+      <span class="k-icon-tile" style="margin:0 auto 1.25rem;width:4rem;height:4rem">${icon("circle-help")}</span>
+      <h1>Something went wrong.</h1>
+      <p class="k-lede" style="margin-left:auto;margin-right:auto">This page didn’t load properly, but your card and settings are saved.</p>
+      <div style="margin-top:1.75rem;display:flex;gap:0.75rem;justify-content:center">
+        <button type="button" class="k-btn k-btn-coral" data-action="retry">Try again</button>
+        <button type="button" class="k-btn k-btn-outline" data-action="view" data-view="home">${icon("house")}Go home</button>
+      </div></div></main></div>`;
+  }
+  // If any image fails to load (missing file, bad link), swap in a placeholder instead of a broken icon
+  document.addEventListener("error", (e) => {
+    const img = e.target;
+    if (!(img instanceof HTMLImageElement) || !root.contains(img)) return;
+    const box = document.createElement("div");
+    box.className = img.className + " k-img-fallback";
+    box.textContent = img.dataset.fallback || "";
+    box.setAttribute("role", "img");
+    box.setAttribute("aria-label", img.alt || "Image unavailable");
+    img.replaceWith(box);
+  }, true);
+  // Read an uploaded photo as a small JPEG data URL so it saves with the card
+  function readPhoto(file, done, fail) {
+    if (!file || !/^image\//.test(file.type)) return fail();
+    const reader = new FileReader();
+    reader.onerror = fail;
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = fail;
+      img.onload = () => {
+        try {
+          const scale = Math.min(1, 640 / Math.max(img.width, img.height));
+          const c = document.createElement("canvas");
+          c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+          c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+          done(c.toDataURL("image/jpeg", 0.85));
+        } catch (e) { fail(); }
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+  function saveView() {
+    try {
+      writeJSON(VIEW_KEY, { view: state.view, open: state.open, settings: state.settings, optedOut: state.optedOut, edit: state.edit });
+    } catch (e) { /* storage unavailable */ }
+  }
+  function loadView() {
+    const d = readJSON(VIEW_KEY);
+    if (!d || typeof d !== "object") return;
+    // Settings always carry over. Which page you were on only comes back on a refresh (or back/forward);
+    // arriving by a link (e.g. "Take me home" from the invite) starts on the homepage.
+    let reload = false;
+    try { const nav = performance.getEntriesByType("navigation")[0]; reload = !!nav && (nav.type === "reload" || nav.type === "back_forward"); } catch (e) { /* older browser */ }
+    try {
+      if (d.settings && typeof d.settings === "object") for (const k of Object.keys(state.settings)) if (typeof d.settings[k] === "boolean") state.settings[k] = d.settings[k];
+      state.optedOut = d.optedOut === true;
+      if (!reload) return;
+      if (PAGES[d.view]) state.view = d.view;
+      if (d.open && typeof d.open === "object") state.open = { matches: typeof d.open.matches === "string" ? d.open.matches : null, introductions: typeof d.open.introductions === "string" ? d.open.introductions : null };
+      if (d.edit && typeof d.edit === "object" && state.view === "profile") state.edit = cleanCard(d.edit);
+    } catch (e) { console.warn("Katalyzr: couldn't restore the saved page, starting at home.", e); }
+  }
+
   /* ---------- Events ---------- */
   root.addEventListener("click", (e) => {
+    try { handleClick(e); } catch (err) { console.error("Katalyzr: that action failed", err); root.innerHTML = errorPage(); }
+  });
+  function handleClick(e) {
     const el = e.target.closest("[data-action]");
     if (!el || el.disabled) return;
     const d = el.dataset;
     switch (d.action) {
       case "view": state.view = d.view; state.edit = null; state.savedNote = false; state.open = { matches: null, introductions: null }; render(); return window.scrollTo({ top: 0 });
-      case "edit-start": state.edit = JSON.parse(JSON.stringify(state.card)); state.editErrors = false; state.chipDrafts = {}; state.savedNote = false; render(); return window.scrollTo({ top: 0 });
+      case "edit-start": state.edit = cleanCard(JSON.parse(JSON.stringify(state.card))); state.editErrors = false; state.chipDrafts = {}; state.savedNote = false; render(); return window.scrollTo({ top: 0 });
       case "edit-cancel": state.edit = null; render(); return window.scrollTo({ top: 0 });
-      case "sample-photo": state.edit.photo = APPLICANT.photo; return render();
+      case "sample-photo": state.edit.photo = APPLICANT.photo; state.photoError = ""; return render();
       case "chip": {
         const g = chipGroups(state.edit)[d.key], v = d.value;
         if (g.selected.includes(v)) g.set(g.selected.filter((s) => s !== v)); else if (g.selected.length < g.max) g.set([...g.selected, v]);
@@ -457,8 +558,9 @@
       case "close-modal": state.modal = null; return render();
       case "confirm-optout": state.modal = null; state.optedOut = true; return render();
       case "undo-optout": state.optedOut = false; state.view = "home"; return render();
+      case "retry": return render();
     }
-  });
+  }
   function addChip(key) {
     const g = chipGroups(state.edit)[key], v = (state.chipDrafts[key] || "").trim();
     if (!v || g.selected.length >= g.max || g.selected.some((s) => s.toLowerCase() === v.toLowerCase())) return;
@@ -475,10 +577,8 @@
   root.addEventListener("change", (e) => {
     const t = e.target;
     if (t.id === "e-photo" && t.files && t.files[0]) {
-      // Read as a data URL so the new photo survives a page refresh
-      const reader = new FileReader();
-      reader.onload = () => { state.edit.photo = reader.result; render(); };
-      reader.readAsDataURL(t.files[0]);
+      readPhoto(t.files[0], (url) => { state.edit.photo = url; state.photoError = ""; render(); },
+        () => { state.photoError = "That photo couldn’t be read. Try a JPG or PNG image."; render(); });
     }
   });
   root.addEventListener("keydown", (e) => {
@@ -494,5 +594,6 @@
   });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && state.modal) { state.modal = null; render(); } });
 
+  loadView();
   render();
 })();

@@ -17,3 +17,7 @@ Product rules (from the INFO 490 brief) the homepage follows:
 - Past matches are only kept if the user opts in (Settings → Keep my match history).
 - Applicants can keep their card for next time (skip steps 1–3).
 - Desktop only.
+
+Saving and errors:
+- The card is saved under `katalyzr-home-card`; page, open rows, settings, opt-out and any unsaved edit draft under `katalyzr-home-view-v1`. Settings always carry over; the page you were on comes back on a refresh (not when arriving by a link). `cleanCard()` cleans saved data before use.
+- If a page throws, `errorPage()` shows Try again / Go home. Images that fail to load are swapped for a placeholder (`data-fallback`).

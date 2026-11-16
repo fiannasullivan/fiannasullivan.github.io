@@ -146,3 +146,6 @@
 .k-row-steps { max-width: 36rem; }
 .k-step.is-ended .k-dot { background: var(--csg-lavender); border-color: var(--csg-lavender-line); color: var(--muted-foreground); }
 .k-step.is-ended .k-step-title { color: var(--muted-foreground); }
+
+/* Error handling: placeholder for images that fail to load */
+.k-img-fallback { display: flex; align-items: center; justify-content: center; padding: 0.5rem; text-align: center; font-size: 0.8rem; font-weight: 600; color: var(--muted-foreground); background: var(--csg-lavender); }

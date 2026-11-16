@@ -66,7 +66,7 @@
     { title: "Meet your match", body: "One hiring manager, chosen by hand for shared mindset.", icon: "hiring-manager" },
     { title: "Two conversations", body: "First a psychologist, so you walk in already understood. Then the hiring manager. That’s it.", icon: "messages-square" },
   ];
-  const firstName = (n) => n.split(" ")[0];
+  const firstName = (n) => String(n || "").trim().split(/\s+/)[0] || "";
   const INTERVIEWS = {
     psychologist: {
       eyebrow: "Step 5 · First conversation",
@@ -134,6 +134,7 @@
     booking: freshBookings(), // steps 5 & 6: the day and time picked for each interview
     optedOut: false, // welcome: applicant declined the invitation
     optOutReason: "",
+    photoError: "", // step 1: shown if an uploaded photo can't be read
     player: { time: 0, playing: false, speed: 1, chaptersOpen: false },
     call: { joined: false, ended: false, seconds: 0, mic: true, cam: true, captions: true },
     brief: { approved: false, editing: false, note: "", noteSent: false }, // step 5: the Mindset brief the applicant approves
@@ -144,6 +145,70 @@
   }
   let timers = [];
   const clearTimers = () => { timers.forEach((t) => clearInterval(t)); timers = []; };
+
+  /* ---------- Saving progress (so a refresh doesn't send you back to the start) ---------- */
+  // Prototype: progress is kept in this browser's localStorage. A real build would save it to the account.
+  const SAVE_KEY = "katalyzr-invite-v1";
+  const str = (v) => (typeof v === "string" ? v : v == null ? "" : String(v));
+  const strList = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string" && x.trim()) : []);
+  // Turns anything (old saves, half-filled cards, bad data) into a card the screens can safely draw
+  function cleanApplicant(a) {
+    a = a && typeof a === "object" ? a : {};
+    return {
+      photo: typeof a.photo === "string" && a.photo ? a.photo : null,
+      name: str(a.name), role: str(a.role), company: str(a.company),
+      experienceYears: str(a.experienceYears), experience: str(a.experience),
+      skills: strList(a.skills), customPersonalSkills: strList(a.customPersonalSkills),
+      values: strList(a.values), workingStyle: strList(a.workingStyle), personality: strList(a.personality),
+      mindset: str(a.mindset),
+    };
+  }
+  function saveProgress() {
+    try { writeProgress(); } catch (e) { console.warn("Katalyzr: couldn't save progress", e); }
+  }
+  function writeProgress() {
+    const data = {
+      step: state.step, applicant: state.applicant, episodeListened: state.episodeListened, flipped: state.flipped,
+      linkedin: { url: state.linkedin.url, imported: state.linkedin.imported },
+      booking: state.booking, optedOut: state.optedOut, optOutReason: state.optOutReason,
+      brief: { approved: state.brief.approved, note: state.brief.note, noteSent: state.brief.noteSent },
+      callEnded: state.call.ended, episodeTime: state.player.time,
+    };
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); }
+    catch (e) {
+      // Storage full (usually a big uploaded photo): save everything except the photo
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify({ ...data, applicant: { ...data.applicant, photo: null } })); } catch (e2) { /* storage unavailable */ }
+    }
+  }
+  function loadProgress() {
+    let d;
+    try { d = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { d = null; }
+    if (!d || typeof d !== "object") return;
+    try {
+      if (STEPS.includes(d.step)) state.step = d.step;
+      state.applicant = cleanApplicant(d.applicant);
+      state.episodeListened = d.episodeListened === true;
+      state.flipped = d.flipped === true;
+      if (d.linkedin && typeof d.linkedin === "object") state.linkedin = { url: str(d.linkedin.url), status: "idle", error: "", imported: d.linkedin.imported === true };
+      if (d.booking && typeof d.booking === "object") {
+        for (const k of ["psychologist", "hiring-manager"]) {
+          const b = d.booking[k];
+          if (!b || typeof b !== "object") continue;
+          const okDate = typeof b.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(b.date), okTime = SLOT_TIMES.includes(b.time);
+          state.booking[k] = { month: typeof b.month === "string" ? b.month : null, date: okDate ? b.date : null, time: okTime ? b.time : null, confirmed: b.confirmed === true && okDate && okTime, skipped: b.skipped === true };
+        }
+      }
+      state.optedOut = d.optedOut === true;
+      state.optOutReason = str(d.optOutReason);
+      if (d.brief && typeof d.brief === "object") state.brief = { approved: d.brief.approved === true, editing: false, note: str(d.brief.note), noteSent: d.brief.noteSent === true };
+      state.call.ended = d.callEnded === true && state.step === "psychologist";
+      const t = Number(d.episodeTime);
+      if (state.step === "episode" && t > 0) state.player.time = Math.min(EPISODE_LENGTH, t);
+    } catch (e) {
+      console.warn("Katalyzr: couldn't restore saved progress, starting fresh.", e);
+    }
+  }
+  function clearProgress() { try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* storage unavailable */ } }
 
   function goTo(step) {
     const idx = STEPS.indexOf(step);
@@ -165,7 +230,7 @@
     startStepTimers();
   }
   function updateApplicant(patch) { state.applicant = { ...state.applicant, ...patch }; render(); }
-  function restart() { state.applicant = { ...EMPTY_APPLICANT }; state.optedOut = false; state.optOutReason = ""; state.brief = { approved: false, editing: false, note: "", noteSent: false }; state.linkedin = { url: "", status: "idle", error: "", imported: false }; state.booking = freshBookings(); goTo("welcome"); }
+  function restart() { clearProgress(); state.flipped = false; state.applicant = { ...EMPTY_APPLICANT }; state.optedOut = false; state.optOutReason = ""; state.brief = { approved: false, editing: false, note: "", noteSent: false }; state.linkedin = { url: "", status: "idle", error: "", imported: false }; state.booking = freshBookings(); goTo("welcome"); }
 
   /* ---------- Helpers ---------- */
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -287,7 +352,7 @@
   function avatar(p, cls) {
     const initials = (p.name || "").split(" ").filter(Boolean).slice(0, 2).map((w) => (w[0] || "").toUpperCase()).join("") || "?";
     return `<div class="${cx("shrink-0 overflow-hidden bg-muted", cls)}">${
-      p.photo ? `<img src="${esc(p.photo)}" alt="" class="size-full object-cover">`
+      p.photo ? `<img src="${esc(p.photo)}" alt="" class="size-full object-cover" data-fallback="${esc(initials)}">`
         : `<div class="flex size-full items-center justify-center font-medium text-muted-foreground">${esc(initials)}</div>`
     }</div>`;
   }
@@ -319,7 +384,7 @@
     const showExp = p.experienceYears || p.experience || editing;
     return `<article aria-label="${esc(label)}: ${esc(p.name || "Your card")}" class="${cx("flex w-full flex-col overflow-hidden rounded-2xl border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-12px_rgba(60,40,10,0.18)]", className)}">
       <div class="relative aspect-[4/3] w-full bg-muted">
-        ${p.photo ? `<img src="${esc(p.photo)}" alt="Portrait of ${esc(p.name)}" class="size-full object-cover">`
+        ${p.photo ? `<img src="${esc(p.photo)}" alt="Portrait of ${esc(p.name)}" class="size-full object-cover" data-fallback="Photo unavailable">`
           : `<div class="flex size-full flex-col items-center justify-center gap-2 text-muted-foreground">${icon("camera", "size-6")}<span class="text-xs">${editing ? "Add a photo" : "No photo"}</span></div>`}
         <span class="absolute left-3 top-3 rounded-full bg-card/90 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-foreground backdrop-blur">${esc(label)}</span>
       </div>
@@ -631,6 +696,7 @@
                 <button type="button" data-action="sample-photo" class="rounded-full px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground">Use sample photo</button>
               </div>
             </div>
+            ${state.photoError ? `<p class="text-sm" role="alert" style="color:var(--csg-coral-deep)">${esc(state.photoError)}</p>` : ""}
             <div class="grid grid-cols-2 gap-4">
               ${field("Full name", "f-name", `<input id="f-name" data-field="name" class="${cx(INPUT, err(!a.name.trim()) && INVALID)}" value="${esc(a.name)}" autocomplete="name">`)}
               ${field("Current role", "f-role", `<input id="f-role" data-field="role" class="${cx(INPUT, err(!a.role.trim()) && INVALID)}" value="${esc(a.role)}" autocomplete="organization-title">`)}
@@ -700,7 +766,7 @@
     const p = state.player, pct = (p.time / EPISODE_LENGTH) * 100, ch = currentChapter(p.time);
     return `<section id="player" aria-label="${PODCAST} podcast player" class="border-t bg-primary text-primary-foreground">
       <div class="flex gap-3 p-4">
-        <img src="images/podcast-cover.jpg" alt="" class="size-16 shrink-0 rounded-md object-cover">
+        <img src="images/podcast-cover.jpg" alt="" class="size-16 shrink-0 rounded-md object-cover" data-fallback="UO">
         <div class="min-w-0"><p class="text-[11px] uppercase tracking-[0.14em] text-primary-foreground/70">${PODCAST} · Ep. 47</p>
           <p class="font-serif text-lg leading-snug text-pretty">Elena Vasquez on building calm companies in chaotic markets</p></div>
       </div>
@@ -774,7 +840,7 @@
           </div>
           ${button({ size: "lg", className: "h-11 w-full max-w-xs gap-2 rounded-full", attrs: `data-action="goto" data-step="psychologist"${state.episodeListened ? "" : " disabled"}`, content: "Continue to first interview" + icon("arrow-right", "size-4") })}
           ${!state.episodeListened ? `<p class="-mt-2 text-xs text-muted-foreground">Unlocks after listening (${fmt(EPISODE_LENGTH)})</p>` : ""}
-          <div class="w-full max-w-md overflow-hidden rounded-2xl text-left shadow-lg">${podcastPlayer()}</div>
+          <div class="w-full max-w-md overflow-hidden rounded-2xl text-left shadow-lg">${safe("podcast player", podcastPlayer)}</div>
           <div class="w-full max-w-md rounded-xl border bg-card/70 p-4 text-left">
             <p class="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${icon("ear", "size-3.5 text-brass")}Listen for what you share</p>
             <ul class="flex flex-wrap gap-1.5">${[...c.values, ...c.personality].map((i) => chip(i, true)).join("")}</ul>
@@ -795,7 +861,7 @@
         <span id="call-time" class="tabular-nums text-background/70">${fmt(c.seconds)}</span>
       </div>
       <div class="relative aspect-video overflow-hidden bg-black">
-        <img src="${esc(cfg.remote.photo)}" alt="Video feed of ${esc(cfg.remote.name)}" class="size-full object-cover">
+        <img src="${esc(cfg.remote.photo)}" alt="Video feed of ${esc(cfg.remote.name)}" class="size-full object-cover" data-fallback="Video unavailable. Try leaving and rejoining the call.">
         <div class="absolute bottom-4 left-4 rounded-lg bg-black/55 px-3 py-1.5 backdrop-blur"><p class="text-sm font-medium">${esc(cfg.remote.name)}</p><p class="text-xs text-white/70">${esc(cfg.remote.title)}</p></div>
         ${c.captions ? `<p class="absolute inset-x-0 bottom-20 mx-auto w-fit max-w-[70%] rounded-md bg-black/65 px-4 py-2 text-center text-sm leading-relaxed text-white">${esc(cfg.caption)}</p>` : ""}
         <div class="absolute right-4 top-4 h-32 w-48 overflow-hidden rounded-xl border-2 border-white/20 bg-neutral-800 shadow-lg">
@@ -898,7 +964,11 @@
     return d;
   }
   // "Join video call" stays greyed out until the booked time (or the prototype's "Skip to time")
-  const callIsOpen = (kind) => state.booking[kind].skipped || Date.now() >= bookedStart(kind).getTime();
+  const callIsOpen = (kind) => {
+    const b = state.booking[kind];
+    if (b.skipped) return true;
+    try { return Date.now() >= bookedStart(kind).getTime(); } catch (e) { return false; }
+  };
 
   function bookingCalendar(kind, cfg) {
     const b = state.booking[kind], { start } = bookingWindow(kind);
@@ -963,7 +1033,7 @@
           ${kind === "psychologist" ? advocateCard() : ""}
           ${kind === "hiring-manager" && state.brief.approved ? `<p class="flex items-center gap-1.5 px-1 text-xs text-muted-foreground">${icon("circle-check", "size-3.5 text-primary")}${esc(firstName(MATCH.name))} has read your approved Mindset brief</p>` : ""}
         </aside>
-        ${kind === "psychologist" && state.call.ended ? mindsetBrief() : state.call.joined ? videoCall(cfg) : !state.booking[kind].confirmed ? `<div>${bookingCalendar(kind, cfg)}${kind === "psychologist" ? whoBenefits() : ""}</div>` : `<div><section aria-label="Join the call" class="flex aspect-video flex-col items-center justify-center gap-6 rounded-2xl border bg-card p-10 text-center">
+        ${kind === "psychologist" && state.call.ended ? safe("Mindset brief", mindsetBrief) : state.call.joined ? safe("video call", () => videoCall(cfg)) : !state.booking[kind].confirmed ? `<div>${safe("booking calendar", () => bookingCalendar(kind, cfg))}${kind === "psychologist" ? whoBenefits() : ""}</div>` : `<div><section aria-label="Join the call" class="flex aspect-video flex-col items-center justify-center gap-6 rounded-2xl border bg-card p-10 text-center">
           <div class="flex items-center -space-x-4">
             ${avatar(a, "size-20 rounded-full border-4 border-card")}${avatar(cfg.remote, "size-20 rounded-full border-4 border-card")}${kind === "hiring-manager" ? avatar(PSYCH, "size-20 rounded-full border-4 border-card") : ""}
           </div>
@@ -1012,6 +1082,66 @@
     }
   }
 
+  /* ---------- Error handling ---------- */
+  // Read an uploaded photo as a small JPEG data URL, so it's saved with the card and survives a refresh
+  function readPhoto(file, done) {
+    const fail = () => { state.photoError = "That photo couldn’t be read. Try a JPG or PNG image."; render(); };
+    if (!file || !/^image\//.test(file.type)) return fail();
+    const reader = new FileReader();
+    reader.onerror = fail;
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = fail;
+      img.onload = () => {
+        try {
+          const scale = Math.min(1, 640 / Math.max(img.width, img.height));
+          const c = document.createElement("canvas");
+          c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+          c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+          state.photoError = "";
+          done(c.toDataURL("image/jpeg", 0.85));
+        } catch (e) { fail(); }
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+  // Draw one part of a page; if it throws, show a small "couldn't load" box instead of breaking the page
+  function safe(label, draw) {
+    try { return draw(); }
+    catch (err) {
+      console.error(`Katalyzr: ${label} failed to load`, err);
+      return `<div class="k-error-box" role="alert">${icon("circle-help", "size-5")}<div><p class="font-medium">The ${esc(label)} couldn’t load.</p><p class="text-sm text-muted-foreground">Your progress is saved. Try again, or keep going with the rest of the page.</p></div><button type="button" data-action="retry" class="k-error-retry">Try again</button></div>`;
+    }
+  }
+  // Whole-page fallback if a step can't be drawn at all
+  function errorScreen() {
+    const prev = STEPS[STEPS.indexOf(state.step) - 1];
+    return `<div class="flex min-h-screen min-w-[1200px] flex-col">
+      <header class="csg-header border-b"><div class="mx-auto flex max-w-7xl items-center px-8 py-4"><div class="flex items-center gap-3">${CSG_MARK}<span class="font-serif text-2xl tracking-tight">Katalyzr</span></div></div></header>
+      <main class="mx-auto flex max-w-xl flex-1 flex-col items-center justify-center py-16 text-center">
+        ${iconTile("circle-help", "size-16")}
+        <h1 class="mt-6 font-serif text-4xl leading-tight">Something went wrong on this step.</h1>
+        <p class="mt-3 text-base text-muted-foreground">Don’t worry, your card and progress are saved. Try loading the step again, or go back one step.</p>
+        <div class="mt-8 flex items-center gap-3">
+          ${button({ size: "lg", className: "csg-cta h-11 rounded-full px-5", attrs: 'data-action="retry"', content: "Try again" })}
+          ${prev ? button({ variant: "outline", className: "h-11 rounded-full px-5", attrs: `data-action="goto" data-step="${prev}"`, content: "Go back a step" }) : ""}
+          <button type="button" data-action="restart" class="text-sm text-muted-foreground underline decoration-dotted underline-offset-4">Start over</button>
+        </div>
+      </main></div>`;
+  }
+  // If any image fails to load (missing file, bad link, expired upload), swap in a placeholder
+  document.addEventListener("error", (e) => {
+    const img = e.target;
+    if (!(img instanceof HTMLImageElement) || !root.contains(img)) return;
+    const box = document.createElement("div");
+    box.className = img.className + " k-img-fallback";
+    box.textContent = img.dataset.fallback || "";
+    box.setAttribute("role", "img");
+    box.setAttribute("aria-label", img.alt || "Image unavailable");
+    img.replaceWith(box);
+  }, true);
+
   /* ---------- Render (keeps focus and cursor position across re-renders) ---------- */
   const root = document.getElementById("root");
   function render(withAnimation = false) {
@@ -1020,8 +1150,10 @@
     let selStart = null, selEnd = null;
     try { selStart = active.selectionStart; selEnd = active.selectionEnd; } catch (e) { /* not a text field */ }
     animate = withAnimation;
-    root.innerHTML = shell(screen()) + modal();
+    try { root.innerHTML = shell(screen()) + modal(); }
+    catch (err) { console.error("Katalyzr: this step couldn’t be drawn", err); root.innerHTML = errorScreen(); }
     animate = false;
+    saveProgress();
     if (focusId) {
       const el = document.getElementById(focusId);
       if (el && !el.disabled) {
@@ -1064,7 +1196,7 @@
     li.error = ""; li.status = "loading"; render();
     setTimeout(() => {
       const s = SAMPLE_APPLICANT;
-      updateApplicant({ photo: s.photo, name: s.name, role: s.role, experienceYears: s.experienceYears, experience: s.experience, skills: [...s.skills] });
+      updateApplicant(cleanApplicant({ ...state.applicant, photo: s.photo, name: s.name, role: s.role, experienceYears: s.experienceYears, experience: s.experience, skills: [...s.skills] }));
       li.status = "idle"; li.imported = true; state.modal = null; state.showErrors = false;
       render();
     }, 1600);
@@ -1078,6 +1210,9 @@
     g.set([...g.selected, v]);
   }
   root.addEventListener("click", (e) => {
+    try { handleClick(e); } catch (err) { console.error("Katalyzr: that action failed", err); root.innerHTML = errorScreen(); }
+  });
+  function handleClick(e) {
     const el = e.target.closest("[data-action]");
     if (!el || el.disabled) return;
     const { action } = el.dataset;
@@ -1085,6 +1220,7 @@
     switch (action) {
       case "goto": return goTo(el.dataset.step);
       case "restart": return restart();
+      case "retry": return render();
       case "modal": state.modal = el.dataset.modal; state.linkedin.error = ""; render(); { const m = document.querySelector(".k-modal input[type=url]") || document.querySelector(".k-modal button, .k-modal input"); if (m) m.focus(); } return;
       case "close-modal": state.modal = null; return render();
       case "confirm-optout": state.optedOut = true; state.modal = null; render(true); return window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1099,7 +1235,7 @@
       case "fill-sample": state.applicant = { ...SAMPLE_APPLICANT }; return render();
       case "li-import": return importFromLinkedIn();
       case "li-dismiss": state.linkedin.imported = false; return render();
-      case "sample-photo": return updateApplicant({ photo: SAMPLE_APPLICANT.photo });
+      case "sample-photo": state.photoError = ""; return updateApplicant({ photo: SAMPLE_APPLICANT.photo });
       case "chip": {
         const g = chipGroups()[el.dataset.key], v = el.dataset.value;
         if (g.selected.includes(v)) g.set(g.selected.filter((s) => s !== v));
@@ -1135,7 +1271,7 @@
       case "toggle-cam": c.cam = !c.cam; return render();
       case "toggle-captions": c.captions = !c.captions; return render();
     }
-  });
+  }
   root.addEventListener("input", (e) => {
     const t = e.target;
     if (t.dataset.field) return updateApplicant({ [t.dataset.field]: t.value });
@@ -1148,7 +1284,7 @@
     const t = e.target;
     if (t.id === "step-select") return goTo(t.value);
     if (t.name === "optout-reason") { state.optOutReason = t.value; return; }
-    if (t.id === "f-photo" && t.files && t.files[0]) return updateApplicant({ photo: URL.createObjectURL(t.files[0]) });
+    if (t.id === "f-photo" && t.files && t.files[0]) return readPhoto(t.files[0], (url) => updateApplicant({ photo: url }));
   });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && state.modal && state.linkedin.status !== "loading") { state.modal = null; render(); }
@@ -1175,5 +1311,20 @@
     }
   }, 30000);
 
+  // Start-up: ?restart=1 (used by the homepage's "Back to the first match") starts fresh;
+  // otherwise pick up where you left off.
+  try {
+    const params = new URLSearchParams(location.search);
+    if (params.get("restart") === "1") {
+      clearProgress();
+      params.delete("restart");
+      history.replaceState(null, "", location.pathname + (params.toString() ? "?" + params : "") + location.hash);
+    } else {
+      loadProgress();
+    }
+  } catch (e) { /* bad URL or storage unavailable: start fresh */ }
+  window.addEventListener("pagehide", saveProgress); // keeps podcast progress when leaving or refreshing
+
   render(true);
+  startStepTimers();
 })();

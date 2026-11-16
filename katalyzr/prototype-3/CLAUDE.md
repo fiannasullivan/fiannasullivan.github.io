@@ -14,3 +14,9 @@ Plain HTML/CSS/JS port of the v0 build that was at katalyzr.vercel.app. No build
 - `images/` — sample photos and podcast cover.
 
 Desktop-only (min width 1200px), matching the Katalyzr spec.
+
+Saving and errors:
+- Progress (step, card, flip, bookings, brief, podcast position, opt-out…) is saved to `localStorage` under `katalyzr-invite-v1` on every render, and restored on load, so a refresh keeps your place. `restart()` and `?restart=1` (used by the homepage's "Back to the first match") clear it. Saved data is cleaned by `cleanApplicant()` before use, so bad or old saves can't break a page.
+- Uploaded photos are shrunk and stored as data URLs so they survive a refresh.
+- `safe(label, draw)` wraps the podcast player, video call, booking calendar and Mindset brief: if one throws, it shows a small "couldn't load / Try again" box and the rest of the page still works. If a whole step throws, `errorScreen()` offers Try again / Go back a step / Start over.
+- Every `<img>` has a `data-fallback` text; a document-level error listener swaps any image that fails to load for a placeholder.
