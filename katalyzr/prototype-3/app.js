@@ -493,10 +493,10 @@
       <header class="csg-header border-b"><div class="mx-auto flex max-w-7xl items-center justify-between px-8 py-4">
         <div class="flex items-center gap-3">${CSG_MARK}<span class="font-serif text-2xl tracking-tight">Katalyzr</span><span class="text-xs text-muted-foreground">by Culminate Strategy Group</span></div>
         <div class="flex items-center gap-4">
-          <span class="flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground">${icon("lock", "size-3")}Private invitation · KTZ-0417</span>
+          <span class="flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground">${icon("lock", "size-3")}${onAccount ? "Invite only" : "Private invitation · KTZ-0417"}</span>
           <label class="flex items-center gap-2 text-xs text-muted-foreground"><span>Prototype</span>
             <select id="step-select" class="rounded-md border bg-card px-2 py-1 text-xs text-foreground">${
-              `<option value="account"${onAccount ? " selected" : ""}>Create account</option>` +
+              `<option value="account"${onAccount ? " selected" : ""}>Sign in</option>` +
               STEPS.map((s, i) => `<option value="${s}"${!onAccount && s === state.step ? " selected" : ""}>${i}. ${esc(STEP_LABELS[s])}</option>`).join("")
             }</select></label>
         </div></div></header>
@@ -509,73 +509,67 @@
   }
 
   /* ---------- Screens ---------- */
-  /* ---------- Create your account (before the invitation) ---------- */
-  const INVITEE = { name: "Jordan Ellis", email: "jordan.ellis@lumenhealth.com" }; // who this private invitation is for
+  /* ---------- Sign in (the start page for everyone, before the personal invitation) ---------- */
+  // Each invitation email explains who Culminate is and gives a username + password. Signing in with them
+  // opens that person's personal invitation. Prototype: only Jordan's demo login exists.
   const DEMO_LOGIN = { username: "jordan.ellis", password: "Katalyzr2026" }; // prototype only: "Fill as Jordan"
-  function accountProblems(acc) {
+  function signInProblems(acc) {
     const e = {};
-    const u = acc.username.trim();
-    if (!u) e.username = "Choose a username.";
-    else if (!/^[a-zA-Z0-9._-]{3,30}$/.test(u)) e.username = "Use 3–30 letters, numbers, dots, dashes or underscores.";
-    if (!acc.password) e.password = "Choose a password.";
-    else if (acc.password.length < 8 || !/\d/.test(acc.password) || !/[a-zA-Z]/.test(acc.password)) e.password = "Use at least 8 characters, with a letter and a number.";
-    if (!acc.confirm) e.confirm = "Type your password again.";
-    else if (acc.confirm !== acc.password) e.confirm = "These passwords don’t match.";
+    if (!acc.username.trim()) e.username = "Enter the username from your invitation email.";
+    if (!acc.password) e.password = "Enter the password from your invitation email.";
+    if (!e.username && !e.password && (acc.username.trim().toLowerCase() !== DEMO_LOGIN.username || acc.password !== DEMO_LOGIN.password))
+      e.form = "That username and password don’t match an invitation. Check your invitation email and try again.";
     return e;
   }
   function accountScreen() {
-    const acc = state.account, err = acc.errors || {}, type = acc.show ? "text" : "password", pw = acc.password;
-    const rule = (ok, text) => `<li class="flex items-center gap-2 ${ok ? "text-foreground" : "text-muted-foreground"}">${icon(ok ? "circle-check" : "clock", cx("size-3.5", ok && "text-primary"))}${text}</li>`;
+    const acc = state.account, err = acc.errors || {}, type = acc.show ? "text" : "password";
     const fieldErr = (k) => (err[k] ? `<p class="text-sm" role="alert" style="color:var(--csg-coral-deep)">${esc(err[k])}</p>` : "");
+    const step = (n, title, text) => `<li class="flex gap-4"><span class="k-step-n">${n}</span><div><p class="font-medium">${title}</p><p class="text-sm text-muted-foreground">${text}</p></div></li>`;
     return `<div class="grid grid-cols-[1.1fr_1fr] items-center gap-16 py-6">
       <section aria-labelledby="account-heading">
-        <p class="mb-4 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">${icon("lock", "size-4")}Your private invitation</p>
-        <h1 id="account-heading" class="font-serif text-6xl leading-[1.05] text-balance">Hi ${esc(firstName(INVITEE.name))}, let’s set up your account.</h1>
-        <p class="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground text-pretty">This invitation was made for you. Your account keeps everything tailored to you: your card, your match, and where your introduction stands, so you can pick up right where you left off.</p>
-        <ul class="mt-8 flex max-w-md flex-col gap-3 text-base">
-          <li class="flex items-center gap-3">${iconTile("profile-card")}Your card, saved as you build it</li>
-          <li class="flex items-center gap-3">${iconTile("hiring-manager")}One match, chosen for you by hand</li>
-          <li class="flex items-center gap-3">${iconTile("shield-check")}Private: nobody can browse Katalyzr</li>
-        </ul>
+        <p class="mb-4 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">${icon("lock", "size-4")}Invite only</p>
+        <h1 id="account-heading" class="font-serif text-6xl leading-[1.05] text-balance">Welcome to Katalyzr.</h1>
+        <p class="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground text-pretty">Katalyzr is private. Sign in with the username and password from your invitation email to see your personal invitation.</p>
+        <ol class="mt-8 flex max-w-md flex-col gap-5">
+          ${step(1, "Find your invitation email", "It’s from Culminate Strategy Group, and it explains who we are and why you’re hearing from us.")}
+          ${step(2, "Sign in with the details it gave you", "Your username and password are in the email.")}
+          ${step(3, "See your personal invitation", "Once you’re in, we’ll tell you more: why we reached out to you, who you’ll meet, and what happens next.")}
+        </ol>
       </section>
       <form id="account-form" class="flex flex-col gap-5 rounded-2xl border bg-card p-8 shadow-sm" novalidate>
         <div>
-          <h2 class="font-serif text-3xl leading-tight">Create your account</h2>
-          <p class="mt-1 text-sm text-muted-foreground">Invitation for <span class="font-medium text-foreground">${esc(INVITEE.name)}</span> · ${esc(INVITEE.email)}</p>
+          <h2 class="font-serif text-3xl leading-tight">Sign in</h2>
+          <p class="mt-1 text-sm text-muted-foreground">Use the details from your Katalyzr invitation email.</p>
         </div>
+        ${err.form ? `<div class="k-error-box" role="alert">${icon("circle-help", "size-5")}<div><p class="text-sm">${esc(err.form)}</p></div></div>` : ""}
         <div class="flex flex-col gap-1.5">
           <label for="acc-username" class="text-sm font-medium">Username</label>
-          <input id="acc-username" data-acc="username" autocomplete="username" value="${esc(acc.username)}" placeholder="e.g. jordan.ellis"${err.username ? ' aria-invalid="true"' : ""} class="${cx(INPUT, err.username && INVALID)}">
+          <input id="acc-username" data-acc="username" autocomplete="username" value="${esc(acc.username)}"${err.username || err.form ? ' aria-invalid="true"' : ""} class="${cx(INPUT, (err.username || err.form) && INVALID)}">
           ${fieldErr("username")}
         </div>
         <div class="flex flex-col gap-1.5">
           <label for="acc-password" class="text-sm font-medium">Password</label>
-          <div class="k-pw"><input id="acc-password" data-acc="password" type="${type}" autocomplete="new-password" value="${esc(pw)}"${err.password ? ' aria-invalid="true"' : ""} class="${cx(INPUT, err.password && INVALID)}">
+          <div class="k-pw"><input id="acc-password" data-acc="password" type="${type}" autocomplete="current-password" value="${esc(acc.password)}"${err.password || err.form ? ' aria-invalid="true"' : ""} class="${cx(INPUT, (err.password || err.form) && INVALID)}">
             <button type="button" data-action="acc-show" class="k-pw-toggle" aria-label="${acc.show ? "Hide password" : "Show password"}">${icon("eye", "size-4")}${acc.show ? "Hide" : "Show"}</button></div>
-          <ul class="mt-1 flex flex-col gap-1 text-xs">${rule(pw.length >= 8, "At least 8 characters")}${rule(/[a-zA-Z]/.test(pw) && /\d/.test(pw), "A letter and a number")}</ul>
           ${fieldErr("password")}
         </div>
-        <div class="flex flex-col gap-1.5">
-          <label for="acc-confirm" class="text-sm font-medium">Confirm password</label>
-          <input id="acc-confirm" data-acc="confirm" type="${type}" autocomplete="new-password" value="${esc(acc.confirm)}"${err.confirm ? ' aria-invalid="true"' : ""} class="${cx(INPUT, err.confirm && INVALID)}">
-          ${fieldErr("confirm")}
-        </div>
-        <button type="submit" data-slot="button" class="${merge(cx(BTN_BASE, BTN_VARIANT.default, BTN_SIZE.lg, "csg-cta mt-2 h-12 w-full gap-2 rounded-full text-base"))}">Create account & see my invitation${icon("arrow-right", "size-4")}</button>
-        <!-- Prototype only: fills Jordan's demo login. Remove for the final app. -->
+        <button type="submit" data-slot="button" class="${merge(cx(BTN_BASE, BTN_VARIANT.default, BTN_SIZE.lg, "csg-cta mt-2 h-12 w-full gap-2 rounded-full text-base"))}">Sign in${icon("arrow-right", "size-4")}</button>
+        <p class="text-center text-xs text-muted-foreground">Can’t find your invitation email? Contact Culminate Strategy Group.</p>
+        <!-- Prototype only: fills Jordan's demo login from the invitation email. Remove for the final app. -->
         <button type="button" data-action="acc-fill" class="k-proto-skip self-center">${icon("sparkles", "size-3.5")}Prototype only · Fill as Jordan</button>
       </form>
     </div>`;
   }
   function submitAccount() {
     const acc = state.account;
-    acc.errors = accountProblems(acc);
+    acc.errors = signInProblems(acc);
     if (Object.keys(acc.errors).length) {
       render();
       const bad = document.querySelector('#account-form [aria-invalid="true"]');
       if (bad) bad.focus();
       return;
     }
-    // Prototype: no real account is created. Only the username is kept; the password is cleared right away.
+    // Prototype: the password is checked, then cleared right away. Only the username is kept.
     acc.username = acc.username.trim(); acc.password = ""; acc.confirm = ""; acc.show = false; acc.errors = {};
     acc.signedIn = true;
     goTo("welcome");
@@ -1300,7 +1294,7 @@
       case "goto": return goTo(el.dataset.step);
       case "restart": return restart();
       case "acc-show": state.account.show = !state.account.show; return render();
-      case "acc-fill": state.account = { ...state.account, username: DEMO_LOGIN.username, password: DEMO_LOGIN.password, confirm: DEMO_LOGIN.password, errors: {} }; return render();
+      case "acc-fill": state.account = { ...state.account, username: DEMO_LOGIN.username, password: DEMO_LOGIN.password, errors: {} }; return render();
       case "retry": return render();
       case "modal": state.modal = el.dataset.modal; state.linkedin.error = ""; render(); { const m = document.querySelector(".k-modal input[type=url]") || document.querySelector(".k-modal button, .k-modal input"); if (m) m.focus(); } return;
       case "close-modal": state.modal = null; return render();
@@ -1357,7 +1351,7 @@
     const t = e.target;
     if (t.dataset.field) return updateApplicant({ [t.dataset.field]: t.value });
     if (t.id === "brief-note") { state.brief.note = t.value; return; }
-    if (t.dataset.acc) { state.account[t.dataset.acc] = t.value; if (state.account.errors[t.dataset.acc]) state.account.errors[t.dataset.acc] = ""; return render(); }
+    if (t.dataset.acc) { state.account[t.dataset.acc] = t.value; state.account.errors = {}; return render(); }
     if (t.id === "li-url") { state.linkedin.url = t.value; return; }
     if (t.dataset.chipInput) { state.chipDrafts[t.dataset.chipInput] = t.value; return render(); }
     if (t.id === "episode-scrubber") return seek(Number(t.value));

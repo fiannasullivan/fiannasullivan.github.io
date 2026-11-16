@@ -142,3 +142,6 @@ h1 em.text-primary { color: var(--csg-coral-deep); }
 .k-pw-toggle { position: absolute; top: 50%; right: 0.5rem; transform: translateY(-50%); display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.25rem 0.6rem; border-radius: 999px; font-size: 0.78rem; font-weight: 600; color: var(--muted-foreground); }
 .k-pw-toggle:hover { background: var(--secondary); color: var(--foreground); }
 .self-center { align-self: center; }
+
+/* Sign-in page: numbered steps */
+.k-step-n { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: 999px; background: var(--accent); color: var(--accent-foreground); font-family: var(--font-instrument), sans-serif; font-weight: 600; }
