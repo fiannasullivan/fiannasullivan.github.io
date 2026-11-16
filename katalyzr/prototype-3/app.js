@@ -135,6 +135,8 @@
     optedOut: false, // welcome: applicant declined the invitation
     optOutReason: "",
     photoError: "", // step 1: shown if an uploaded photo can't be read
+    // Account page (before the invitation). The password is never saved anywhere: only the username and "signed in".
+    account: { signedIn: false, username: "", password: "", confirm: "", show: false, errors: {} },
     player: { time: 0, playing: false, speed: 1, chaptersOpen: false },
     call: { joined: false, ended: false, seconds: 0, mic: true, cam: true, captions: true },
     brief: { approved: false, editing: false, note: "", noteSent: false }, // step 5: the Mindset brief the applicant approves
@@ -171,6 +173,7 @@
       step: state.step, applicant: state.applicant, episodeListened: state.episodeListened, flipped: state.flipped,
       linkedin: { url: state.linkedin.url, imported: state.linkedin.imported },
       booking: state.booking, optedOut: state.optedOut, optOutReason: state.optOutReason,
+      account: { signedIn: state.account.signedIn, username: state.account.username }, // never the password
       brief: { approved: state.brief.approved, note: state.brief.note, noteSent: state.brief.noteSent },
       callEnded: state.call.ended, episodeTime: state.player.time,
     };
@@ -200,6 +203,7 @@
       }
       state.optedOut = d.optedOut === true;
       state.optOutReason = str(d.optOutReason);
+      if (d.account && typeof d.account === "object") { state.account.signedIn = d.account.signedIn === true; state.account.username = str(d.account.username); }
       if (d.brief && typeof d.brief === "object") state.brief = { approved: d.brief.approved === true, editing: false, note: str(d.brief.note), noteSent: d.brief.noteSent === true };
       state.call.ended = d.callEnded === true && state.step === "psychologist";
       const t = Number(d.episodeTime);
@@ -230,7 +234,7 @@
     startStepTimers();
   }
   function updateApplicant(patch) { state.applicant = { ...state.applicant, ...patch }; render(); }
-  function restart() { clearProgress(); state.flipped = false; state.applicant = { ...EMPTY_APPLICANT }; state.optedOut = false; state.optOutReason = ""; state.brief = { approved: false, editing: false, note: "", noteSent: false }; state.linkedin = { url: "", status: "idle", error: "", imported: false }; state.booking = freshBookings(); goTo("welcome"); }
+  function restart() { clearProgress(); state.account = { signedIn: false, username: "", password: "", confirm: "", show: false, errors: {} }; state.flipped = false; state.applicant = { ...EMPTY_APPLICANT }; state.optedOut = false; state.optOutReason = ""; state.brief = { approved: false, editing: false, note: "", noteSent: false }; state.linkedin = { url: "", status: "idle", error: "", imported: false }; state.booking = freshBookings(); goTo("welcome"); }
 
   /* ---------- Helpers ---------- */
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -483,7 +487,8 @@
       <ol class="${cx("mx-auto flex max-w-6xl items-center px-8 pb-4", anyBack ? "pt-2" : "pt-4")}">${items}</ol></nav>`;
   }
   function shell(content) {
-    const prev = STEPS[STEPS.indexOf(state.step) - 1];
+    const onAccount = !state.account.signedIn;
+    const prev = onAccount ? null : STEPS[STEPS.indexOf(state.step) - 1];
     return `<div class="flex min-h-screen min-w-[1200px] flex-col">
       <header class="csg-header border-b"><div class="mx-auto flex max-w-7xl items-center justify-between px-8 py-4">
         <div class="flex items-center gap-3">${CSG_MARK}<span class="font-serif text-2xl tracking-tight">Katalyzr</span><span class="text-xs text-muted-foreground">by Culminate Strategy Group</span></div>
@@ -491,18 +496,91 @@
           <span class="flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground">${icon("lock", "size-3")}Private invitation · KTZ-0417</span>
           <label class="flex items-center gap-2 text-xs text-muted-foreground"><span>Prototype</span>
             <select id="step-select" class="rounded-md border bg-card px-2 py-1 text-xs text-foreground">${
-              STEPS.map((s, i) => `<option value="${s}"${s === state.step ? " selected" : ""}>${i}. ${esc(STEP_LABELS[s])}</option>`).join("")
+              `<option value="account"${onAccount ? " selected" : ""}>Create account</option>` +
+              STEPS.map((s, i) => `<option value="${s}"${!onAccount && s === state.step ? " selected" : ""}>${i}. ${esc(STEP_LABELS[s])}</option>`).join("")
             }</select></label>
         </div></div></header>
       <main class="flex flex-1 flex-col"><div class="${cx("mx-auto w-full max-w-7xl flex-1 px-8 py-10", anim("animate-in fade-in duration-500"))}">
         ${prev ? `<button type="button" data-action="goto" data-step="${prev}" class="group mb-6 inline-flex items-center gap-2 rounded-full border-2 border-primary/50 bg-card px-4 py-2 text-sm font-medium text-primary shadow-sm transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">${icon("arrow-left", "size-4 transition-transform group-hover:-translate-x-0.5")}Back to ${esc(STEP_LABELS[prev])}</button>` : ""}
         ${content}
       </div></main>
-      ${state.optedOut && state.step === "welcome" ? "" : `<div class="sticky bottom-0 z-10">${progressNav()}</div>`}
+      ${onAccount || (state.optedOut && state.step === "welcome") ? "" : `<div class="sticky bottom-0 z-10">${progressNav()}</div>`}
     </div>`;
   }
 
   /* ---------- Screens ---------- */
+  /* ---------- Create your account (before the invitation) ---------- */
+  const INVITEE = { name: "Jordan Ellis", email: "jordan.ellis@lumenhealth.com" }; // who this private invitation is for
+  const DEMO_LOGIN = { username: "jordan.ellis", password: "Katalyzr2026" }; // prototype only: "Fill as Jordan"
+  function accountProblems(acc) {
+    const e = {};
+    const u = acc.username.trim();
+    if (!u) e.username = "Choose a username.";
+    else if (!/^[a-zA-Z0-9._-]{3,30}$/.test(u)) e.username = "Use 3–30 letters, numbers, dots, dashes or underscores.";
+    if (!acc.password) e.password = "Choose a password.";
+    else if (acc.password.length < 8 || !/\d/.test(acc.password) || !/[a-zA-Z]/.test(acc.password)) e.password = "Use at least 8 characters, with a letter and a number.";
+    if (!acc.confirm) e.confirm = "Type your password again.";
+    else if (acc.confirm !== acc.password) e.confirm = "These passwords don’t match.";
+    return e;
+  }
+  function accountScreen() {
+    const acc = state.account, err = acc.errors || {}, type = acc.show ? "text" : "password", pw = acc.password;
+    const rule = (ok, text) => `<li class="flex items-center gap-2 ${ok ? "text-foreground" : "text-muted-foreground"}">${icon(ok ? "circle-check" : "clock", cx("size-3.5", ok && "text-primary"))}${text}</li>`;
+    const fieldErr = (k) => (err[k] ? `<p class="text-sm" role="alert" style="color:var(--csg-coral-deep)">${esc(err[k])}</p>` : "");
+    return `<div class="grid grid-cols-[1.1fr_1fr] items-center gap-16 py-6">
+      <section aria-labelledby="account-heading">
+        <p class="mb-4 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">${icon("lock", "size-4")}Your private invitation</p>
+        <h1 id="account-heading" class="font-serif text-6xl leading-[1.05] text-balance">Hi ${esc(firstName(INVITEE.name))}, let’s set up your account.</h1>
+        <p class="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground text-pretty">This invitation was made for you. Your account keeps everything tailored to you: your card, your match, and where your introduction stands, so you can pick up right where you left off.</p>
+        <ul class="mt-8 flex max-w-md flex-col gap-3 text-base">
+          <li class="flex items-center gap-3">${iconTile("profile-card")}Your card, saved as you build it</li>
+          <li class="flex items-center gap-3">${iconTile("hiring-manager")}One match, chosen for you by hand</li>
+          <li class="flex items-center gap-3">${iconTile("shield-check")}Private: nobody can browse Katalyzr</li>
+        </ul>
+      </section>
+      <form id="account-form" class="flex flex-col gap-5 rounded-2xl border bg-card p-8 shadow-sm" novalidate>
+        <div>
+          <h2 class="font-serif text-3xl leading-tight">Create your account</h2>
+          <p class="mt-1 text-sm text-muted-foreground">Invitation for <span class="font-medium text-foreground">${esc(INVITEE.name)}</span> · ${esc(INVITEE.email)}</p>
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label for="acc-username" class="text-sm font-medium">Username</label>
+          <input id="acc-username" data-acc="username" autocomplete="username" value="${esc(acc.username)}" placeholder="e.g. jordan.ellis"${err.username ? ' aria-invalid="true"' : ""} class="${cx(INPUT, err.username && INVALID)}">
+          ${fieldErr("username")}
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label for="acc-password" class="text-sm font-medium">Password</label>
+          <div class="k-pw"><input id="acc-password" data-acc="password" type="${type}" autocomplete="new-password" value="${esc(pw)}"${err.password ? ' aria-invalid="true"' : ""} class="${cx(INPUT, err.password && INVALID)}">
+            <button type="button" data-action="acc-show" class="k-pw-toggle" aria-label="${acc.show ? "Hide password" : "Show password"}">${icon("eye", "size-4")}${acc.show ? "Hide" : "Show"}</button></div>
+          <ul class="mt-1 flex flex-col gap-1 text-xs">${rule(pw.length >= 8, "At least 8 characters")}${rule(/[a-zA-Z]/.test(pw) && /\d/.test(pw), "A letter and a number")}</ul>
+          ${fieldErr("password")}
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label for="acc-confirm" class="text-sm font-medium">Confirm password</label>
+          <input id="acc-confirm" data-acc="confirm" type="${type}" autocomplete="new-password" value="${esc(acc.confirm)}"${err.confirm ? ' aria-invalid="true"' : ""} class="${cx(INPUT, err.confirm && INVALID)}">
+          ${fieldErr("confirm")}
+        </div>
+        <button type="submit" data-slot="button" class="${merge(cx(BTN_BASE, BTN_VARIANT.default, BTN_SIZE.lg, "csg-cta mt-2 h-12 w-full gap-2 rounded-full text-base"))}">Create account & see my invitation${icon("arrow-right", "size-4")}</button>
+        <!-- Prototype only: fills Jordan's demo login. Remove for the final app. -->
+        <button type="button" data-action="acc-fill" class="k-proto-skip self-center">${icon("sparkles", "size-3.5")}Prototype only · Fill as Jordan</button>
+      </form>
+    </div>`;
+  }
+  function submitAccount() {
+    const acc = state.account;
+    acc.errors = accountProblems(acc);
+    if (Object.keys(acc.errors).length) {
+      render();
+      const bad = document.querySelector('#account-form [aria-invalid="true"]');
+      if (bad) bad.focus();
+      return;
+    }
+    // Prototype: no real account is created. Only the username is kept; the password is cleared right away.
+    acc.username = acc.username.trim(); acc.password = ""; acc.confirm = ""; acc.show = false; acc.errors = {};
+    acc.signedIn = true;
+    goTo("welcome");
+  }
+
   function welcomeScreen() {
     return `<div class="grid grid-cols-[1.1fr_1fr] items-center gap-16 py-6">
       <section aria-labelledby="welcome-heading">
@@ -1070,6 +1148,7 @@
   }
 
   function screen() {
+    if (!state.account.signedIn) return accountScreen();
     switch (state.step) {
       case "welcome": return state.optedOut ? optedOutScreen() : welcomeScreen();
       case "build": return buildScreen();
@@ -1220,6 +1299,8 @@
     switch (action) {
       case "goto": return goTo(el.dataset.step);
       case "restart": return restart();
+      case "acc-show": state.account.show = !state.account.show; return render();
+      case "acc-fill": state.account = { ...state.account, username: DEMO_LOGIN.username, password: DEMO_LOGIN.password, confirm: DEMO_LOGIN.password, errors: {} }; return render();
       case "retry": return render();
       case "modal": state.modal = el.dataset.modal; state.linkedin.error = ""; render(); { const m = document.querySelector(".k-modal input[type=url]") || document.querySelector(".k-modal button, .k-modal input"); if (m) m.focus(); } return;
       case "close-modal": state.modal = null; return render();
@@ -1276,13 +1357,18 @@
     const t = e.target;
     if (t.dataset.field) return updateApplicant({ [t.dataset.field]: t.value });
     if (t.id === "brief-note") { state.brief.note = t.value; return; }
+    if (t.dataset.acc) { state.account[t.dataset.acc] = t.value; if (state.account.errors[t.dataset.acc]) state.account.errors[t.dataset.acc] = ""; return render(); }
     if (t.id === "li-url") { state.linkedin.url = t.value; return; }
     if (t.dataset.chipInput) { state.chipDrafts[t.dataset.chipInput] = t.value; return render(); }
     if (t.id === "episode-scrubber") return seek(Number(t.value));
   });
   root.addEventListener("change", (e) => {
     const t = e.target;
-    if (t.id === "step-select") return goTo(t.value);
+    if (t.id === "step-select") {
+      if (t.value === "account") { state.account = { signedIn: false, username: "", password: "", confirm: "", show: false, errors: {} }; return render(true); }
+      if (!state.account.signedIn) state.account.signedIn = true; // prototype: jumping ahead from the dropdown skips the account page
+      return goTo(t.value);
+    }
     if (t.name === "optout-reason") { state.optOutReason = t.value; return; }
     if (t.id === "f-photo" && t.files && t.files[0]) return readPhoto(t.files[0], (url) => updateApplicant({ photo: url }));
   });
@@ -1296,6 +1382,7 @@
   });
   root.addEventListener("toggle", (e) => { if (e.target.id === "chapters") state.player.chaptersOpen = e.target.open; }, true);
   root.addEventListener("submit", (e) => {
+    if (e.target.id === "account-form") { e.preventDefault(); return submitAccount(); }
     if (e.target.id !== "build-form") return;
     e.preventDefault();
     if (checklist(state.applicant).every((c) => c.done)) goTo("waiting");

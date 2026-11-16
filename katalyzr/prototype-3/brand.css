@@ -135,3 +135,10 @@ h1 em.text-primary { color: var(--csg-coral-deep); }
 .k-error-box > div { flex: 1; }
 .k-error-retry { flex-shrink: 0; padding: 0.4rem 0.9rem; border-radius: 999px; border: 1px solid var(--border); font-size: 0.8rem; font-weight: 600; background: var(--card); }
 .k-error-retry:hover { border-color: var(--csg-coral); }
+
+/* Create your account: password field with a show/hide button */
+.k-pw { position: relative; }
+.k-pw input { padding-right: 5.5rem; }
+.k-pw-toggle { position: absolute; top: 50%; right: 0.5rem; transform: translateY(-50%); display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.25rem 0.6rem; border-radius: 999px; font-size: 0.78rem; font-weight: 600; color: var(--muted-foreground); }
+.k-pw-toggle:hover { background: var(--secondary); color: var(--foreground); }
+.self-center { align-self: center; }
