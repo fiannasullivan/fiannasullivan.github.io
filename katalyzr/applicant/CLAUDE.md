@@ -1,4 +1,4 @@
-# Katalyzr — Prototype 3
+# Katalyzr — Applicant Prototype (was Prototype 3)
 
 Plain HTML/CSS/JS port of the v0 build that was at katalyzr.vercel.app. No build step, no npm: open `index.html` or serve the folder.
 

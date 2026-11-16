@@ -1,28 +1,51 @@
-/* Katalyzr prototype — plain-JavaScript port of the v0/Next.js version at katalyzr.vercel.app.
-   Same markup and Tailwind classes, so it uses the original compiled stylesheet (styles.css). */
+/* Katalyzr — Hiring Manager Prototype.
+   The hiring manager's side of an introduction, built on the same engine, branding and sign-in page as the
+   Applicant Prototype (../applicant/). Flow (from the "Hiring manager flow" board, updated to match the
+   applicant prototype): sign in → personal invitation from Karrie → build your card (drafted from your
+   episode) → define the role → flip to see the candidate CSG chose by hand → request the introduction →
+   read the candidate's approved Mindset brief → book and hold the interview → yes / no → complete.
+   No matching bot: Culminate Strategy Group chooses the match by hand. */
 (function () {
   "use strict";
 
   /* ---------- Data ---------- */
-  const STEPS = ["welcome", "build", "waiting", "match", "episode", "psychologist", "hiring-manager", "complete"];
+  const STEPS = ["welcome", "build", "role", "match", "brief", "interview", "decision", "complete"];
   const STEP_LABELS = {
     welcome: "Welcome",
     build: "Build your card",
-    waiting: "Flip to see your match",
-    match: "Match reveal",
-    episode: "Listen to the introduction",
-    psychologist: "Psychologist interview",
-    "hiring-manager": "Hiring manager interview",
+    role: "Define the role",
+    match: "Flip to see your match",
+    brief: "Read the Mindset brief",
+    interview: "Interview with Jordan",
+    decision: "Your decision",
     complete: "Introduction complete",
   };
-  const PROGRESS = ["Invited", "Card complete", "Matched", "Episode listened", "Psychologist interview", "Hiring manager interview"];
-  const PROGRESS_STEPS = ["welcome", "build", "match", "episode", "psychologist", "hiring-manager"];
+  const PROGRESS = ["Invited", "Card complete", "Role defined", "Matched", "Brief read", "Interview", "Decision"];
+  const PROGRESS_STEPS = ["welcome", "build", "role", "match", "brief", "interview", "decision"];
 
-  const EMPTY_APPLICANT = { photo: null, name: "", role: "", skills: [], experienceYears: "", experience: "", values: [], workingStyle: [], personality: [], mindset: "" };
-  const SAMPLE_APPLICANT = {
+  // The hiring manager's own card (sample = Elena, who was on Uncommon Operator)
+  const EMPTY_CARD = { photo: null, name: "", role: "", company: "", skills: [], experienceYears: "", experience: "", values: [], workingStyle: [], personality: [], mindset: "" };
+  const SAMPLE_CARD = {
+    photo: "images/hiring-manager.jpg",
+    name: "Elena Vasquez",
+    role: "Chief Operating Officer",
+    company: "Halcyon Robotics",
+    skills: ["Systems thinking", "Operations", "Product strategy", "Team building"],
+    experienceYears: "16",
+    experience: "Took Halcyon from prototype lab to 400 people across three factories.",
+    values: ["Candor", "Ownership", "Craft", "Long-term thinking"],
+    workingStyle: ["Async-first", "Written decisions", "High autonomy"],
+    personality: ["Direct", "Warm", "Calm under pressure"],
+    mindset: "Build calm companies in chaotic markets.",
+  };
+  // What Culminate drafts from the hiring manager's Uncommon Operator episode (they choose the rest)
+  const EPISODE_DRAFT = ["photo", "name", "role", "company", "experienceYears", "experience", "values", "workingStyle"];
+  // The candidate CSG chose by hand (the applicant from the Applicant Prototype)
+  const MATCH = {
     photo: "images/applicant-sample.jpg",
     name: "Jordan Ellis",
-    role: "Head of Operations, Lumen Health",
+    role: "Head of Operations",
+    company: "Lumen Health",
     skills: ["Systems thinking", "Operations", "Team building", "Data analysis", "Negotiation"],
     experienceYears: "11",
     experience: "Scaled two healthtech startups from seed to Series C; built ops teams from 3 to 60.",
@@ -31,64 +54,45 @@
     personality: ["Direct", "Calm under pressure", "Curious"],
     mindset: "Leave every system better than you found it.",
   };
-  const MATCH = {
-    photo: "images/hiring-manager.jpg",
-    name: "Elena Vasquez",
-    role: "Chief Operating Officer",
-    company: "Halcyon Robotics",
-    skills: ["Systems thinking", "Operations", "Product strategy", "Team building", "Go-to-market"],
-    experienceYears: "16",
-    experience: "Took Halcyon from prototype lab to 400 people across three factories.",
-    values: ["Candor", "Ownership", "Craft", "Long-term thinking"],
-    workingStyle: ["Async-first", "Written decisions", "High autonomy"],
-    personality: ["Direct", "Warm", "Calm under pressure"],
-    mindset: "Build calm companies in chaotic markets.",
-  };
   const PSYCH = { name: "Dr. Marcus Hale", title: "Talent Psychologist, CSG", credentials: "PhD, organizational psychology", photo: "images/psychologist.jpg" };
+  const KARRIE = { name: "Karrie", title: "Host of Uncommon Operator · Culminate Strategy Group", photo: null };
   const PODCAST = "Uncommon Operator";
-  const HOME_URL = "../home/?stage=introduced"; // the applicant homepage, shown as "introduced"
-  const EPISODE_LENGTH = 3494;
-  const CHAPTERS = [
-    { start: 0, label: "Cold open" },
-    { start: 142, label: "From factory floor to COO" },
-    { start: 860, label: "Why calm is a competitive advantage" },
-    { start: 1720, label: "Hiring for mindset over résumé" },
-    { start: 2640, label: "A written-decision culture" },
-    { start: 3180, label: "What she looks for in a partner" },
-  ];
+
+  // The role the hiring manager is hiring for
+  const EMPTY_ROLE = { title: "", team: "", mustHaves: [], growth: "", purpose: "", arrangement: "" };
+  const SAMPLE_ROLE = {
+    title: "Director of Operations",
+    team: "Operations · 12 people, reporting to you",
+    mustHaves: ["Systems thinking", "Operations", "Team building"],
+    growth: "Run operations for our third factory within 18 months, then help us open a fourth.",
+    purpose: "Keep Halcyon calm and written-first while we triple in size.",
+    arrangement: "Hybrid",
+  };
+  const ARRANGEMENTS = ["On-site", "Hybrid", "Remote"];
+
   const TECH_SKILLS = ["Systems thinking", "Operations", "Product strategy", "Go-to-market", "Data analysis", "Fundraising", "Engineering leadership", "Brand"];
   const PERSONAL_SKILLS = ["Team building", "Negotiation"];
   const VALUES = ["Candor", "Ownership", "Curiosity", "Craft", "Long-term thinking", "Generosity", "Speed", "Humility"];
   const WORKING_STYLES = ["Async-first", "Written decisions", "Deep work blocks", "High autonomy", "Highly collaborative", "In-person energy"];
   const PERSONALITIES = ["Direct", "Warm", "Calm under pressure", "Curious", "Playful", "Restless", "Reflective"];
   const HOW_IT_WORKS = [
-    { title: "Build your card", body: "Tell us how you think and work. Not a résumé.", icon: "profile-card" },
-    { title: "Meet your match", body: "One hiring manager, chosen by hand for shared mindset.", icon: "hiring-manager" },
-    { title: "Two conversations", body: "First a psychologist, so you walk in already understood. Then the hiring manager. That’s it.", icon: "messages-square" },
+    { title: "Build your card", body: "How you lead and work. We’ve drafted it from your episode.", icon: "profile-card" },
+    { title: "Define the role", body: "What you need, and what growth looks like.", icon: "briefcase-business" },
+    { title: "Meet one candidate", body: "Chosen by hand by Culminate. No stack of résumés.", icon: "user-round" },
+    { title: "One conversation", body: "They talk with our psychologist first, then with you.", icon: "messages-square" },
   ];
   const firstName = (n) => String(n || "").trim().split(/\s+/)[0] || "";
-  const INTERVIEWS = {
-    psychologist: {
-      eyebrow: "Step 5 · First conversation",
-      title: `A conversation with ${PSYCH.name}.`,
-      description: "Not a test. Marcus will ask what stayed with you from the episode and how you like to work. About 30 minutes.",
-      callTitle: "Katalyzr · Psychologist interview",
-      remote: { name: PSYCH.name, title: PSYCH.title, photo: PSYCH.photo },
-      caption: "“So — what was the first thing you thought when Elena talked about calm being a competitive advantage?”",
-      agenda: ["What stayed with you from the episode", "How you make decisions under pressure", "What you need from a partner"],
-      next: "hiring-manager",
-    },
-    "hiring-manager": {
-      eyebrow: "Step 6 · The introduction",
-      title: `Now, meet ${firstName(MATCH.name)}.`,
-      description: "Marcus will open the call and introduce you both, then step back. One conversation, two people who already share a lot.",
-      callTitle: `Katalyzr · Introduction with ${MATCH.name}`,
-      remote: { name: MATCH.name, title: `${MATCH.role}, ${MATCH.company}`, photo: "images/hiring-manager-call.jpg" },
-      caption: "“Marcus told me you write everything down too. I think we’re going to get along.”",
-      agenda: ["A brief introduction from Marcus", "Elena on what she’s building next", "Open conversation"],
-      next: "complete",
-    },
+  const INTERVIEW = {
+    eyebrow: "Step 5 · The introduction",
+    title: `Now, meet ${firstName(MATCH.name)}.`,
+    description: "Marcus will open the call and introduce you both, then step back. About 45 minutes.",
+    callTitle: `Katalyzr · Introduction with ${MATCH.name}`,
+    remote: { name: MATCH.name, title: `${MATCH.role}, ${MATCH.company}`, photo: MATCH.photo },
+    caption: "“I listened to your episode twice. The part about written decisions really stuck with me.”",
+    agenda: ["A brief introduction from Marcus", `${firstName(MATCH.name)} on what they’ve built`, "Open conversation"],
+    next: "decision",
   };
+  const PASS_REASONS = ["Skills", "Culture", "Timing", "Something else"];
 
   /* ---------- Logic ---------- */
   function shared(a, b) {
@@ -121,40 +125,55 @@
     return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
   }
 
+  function roleChecklist(r) {
+    return [
+      { label: "Role title", done: !!r.title.trim() },
+      { label: "Team", done: !!r.team.trim() },
+      { label: "Must-haves", done: r.mustHaves.length >= 2 },
+      { label: "Growth", done: !!r.growth.trim() },
+      { label: "Purpose", done: !!r.purpose.trim() },
+      { label: "Arrangement", done: !!r.arrangement },
+    ];
+  }
+
   /* ---------- State ---------- */
+  const freshAccount = () => ({ signedIn: false, username: "", password: "", confirm: "", show: false, errors: {} });
   const state = {
     step: "welcome",
-    applicant: { ...EMPTY_APPLICANT },
-    episodeListened: false,
-    showErrors: false,
+    card: { ...EMPTY_CARD }, // the hiring manager's own card
+    role: { ...EMPTY_ROLE }, // the role they're hiring for
+    showErrors: false, // build: highlight what's missing after a failed submit
+    roleErrors: false, // role: same, for the role form
     chipDrafts: {},
-    flipped: false, // step 2: has the match card been flipped over?
-    modal: null, // "how" (How did you find me?), "optout", "why-psych", or "linkedin" (fill card from LinkedIn)
-    linkedin: { url: "", status: "idle", error: "", imported: false }, // step 1: fill the card from a LinkedIn profile
-    booking: freshBookings(), // steps 5 & 6: the day and time picked for each interview
-    optedOut: false, // welcome: applicant declined the invitation
+    flipped: false, // match: has the candidate card been flipped over?
+    modal: null, // "how", "optout", "request" (request the introduction), "pass" (not the right fit)
+    draft: { imported: false }, // build: card filled from the episode draft
+    booking: freshBookings(), // interview: the day and time picked
+    optedOut: false,
     optOutReason: "",
-    photoError: "", // step 1: shown if an uploaded photo can't be read
-    // Account page (before the invitation). The password is never saved anywhere: only the username and "signed in".
-    account: { signedIn: false, username: "", password: "", confirm: "", show: false, errors: {} },
-    player: { time: 0, playing: false, speed: 1, chaptersOpen: false },
-    call: { joined: false, ended: false, seconds: 0, mic: true, cam: true, captions: true },
-    brief: { approved: false, editing: false, note: "", noteSent: false }, // step 5: the Mindset brief the applicant approves
+    photoError: "",
+    // Sign-in page. The password is never saved anywhere: only the username and "signed in".
+    account: freshAccount(),
+    intro: { requested: false, note: "" }, // match: introduction requested (Jordan accepts in the prototype)
+    passed: { done: false, reason: "", note: "" }, // match: passed on this candidate
+    briefRead: false, // brief: read Jordan's approved Mindset brief
+    call: { joined: false, seconds: 0, mic: true, cam: true, captions: true },
+    decision: { choice: null, reason: "", note: "", sent: false }, // decision: yes / no after the interview
   };
   function freshBookings() {
     const blank = () => ({ month: null, date: null, time: null, confirmed: false, skipped: false });
-    return { psychologist: blank(), "hiring-manager": blank() };
+    return { interview: blank() };
   }
   let timers = [];
   const clearTimers = () => { timers.forEach((t) => clearInterval(t)); timers = []; };
 
   /* ---------- Saving progress (so a refresh doesn't send you back to the start) ---------- */
   // Prototype: progress is kept in this browser's localStorage. A real build would save it to the account.
-  const SAVE_KEY = "katalyzr-invite-v1";
+  const SAVE_KEY = "katalyzr-manager-v1";
   const str = (v) => (typeof v === "string" ? v : v == null ? "" : String(v));
   const strList = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string" && x.trim()) : []);
   // Turns anything (old saves, half-filled cards, bad data) into a card the screens can safely draw
-  function cleanApplicant(a) {
+  function cleanCard(a) {
     a = a && typeof a === "object" ? a : {};
     return {
       photo: typeof a.photo === "string" && a.photo ? a.photo : null,
@@ -165,22 +184,24 @@
       mindset: str(a.mindset),
     };
   }
+  function cleanRole(r) {
+    r = r && typeof r === "object" ? r : {};
+    return { title: str(r.title), team: str(r.team), mustHaves: strList(r.mustHaves), growth: str(r.growth), purpose: str(r.purpose), arrangement: ARRANGEMENTS.includes(r.arrangement) ? r.arrangement : "" };
+  }
   function saveProgress() {
     try { writeProgress(); } catch (e) { console.warn("Katalyzr: couldn't save progress", e); }
   }
   function writeProgress() {
     const data = {
-      step: state.step, applicant: state.applicant, episodeListened: state.episodeListened, flipped: state.flipped,
-      linkedin: { url: state.linkedin.url, imported: state.linkedin.imported },
+      step: state.step, card: state.card, role: state.role, flipped: state.flipped, draft: state.draft,
       booking: state.booking, optedOut: state.optedOut, optOutReason: state.optOutReason,
+      intro: state.intro, passed: state.passed, briefRead: state.briefRead, decision: state.decision,
       account: { signedIn: state.account.signedIn, username: state.account.username }, // never the password
-      brief: { approved: state.brief.approved, note: state.brief.note, noteSent: state.brief.noteSent },
-      callEnded: state.call.ended, episodeTime: state.player.time,
     };
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); }
     catch (e) {
       // Storage full (usually a big uploaded photo): save everything except the photo
-      try { localStorage.setItem(SAVE_KEY, JSON.stringify({ ...data, applicant: { ...data.applicant, photo: null } })); } catch (e2) { /* storage unavailable */ }
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify({ ...data, card: { ...data.card, photo: null } })); } catch (e2) { /* storage unavailable */ }
     }
   }
   function loadProgress() {
@@ -189,25 +210,22 @@
     if (!d || typeof d !== "object") return;
     try {
       if (STEPS.includes(d.step)) state.step = d.step;
-      state.applicant = cleanApplicant(d.applicant);
-      state.episodeListened = d.episodeListened === true;
+      state.card = cleanCard(d.card);
+      state.role = cleanRole(d.role);
       state.flipped = d.flipped === true;
-      if (d.linkedin && typeof d.linkedin === "object") state.linkedin = { url: str(d.linkedin.url), status: "idle", error: "", imported: d.linkedin.imported === true };
-      if (d.booking && typeof d.booking === "object") {
-        for (const k of ["psychologist", "hiring-manager"]) {
-          const b = d.booking[k];
-          if (!b || typeof b !== "object") continue;
-          const okDate = typeof b.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(b.date), okTime = SLOT_TIMES.includes(b.time);
-          state.booking[k] = { month: typeof b.month === "string" ? b.month : null, date: okDate ? b.date : null, time: okTime ? b.time : null, confirmed: b.confirmed === true && okDate && okTime, skipped: b.skipped === true };
-        }
+      state.draft = { imported: !!(d.draft && d.draft.imported === true) };
+      const b = d.booking && d.booking.interview;
+      if (b && typeof b === "object") {
+        const okDate = typeof b.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(b.date), okTime = SLOT_TIMES.includes(b.time);
+        state.booking.interview = { month: typeof b.month === "string" ? b.month : null, date: okDate ? b.date : null, time: okTime ? b.time : null, confirmed: b.confirmed === true && okDate && okTime, skipped: b.skipped === true };
       }
       state.optedOut = d.optedOut === true;
       state.optOutReason = str(d.optOutReason);
+      if (d.intro && typeof d.intro === "object") state.intro = { requested: d.intro.requested === true, note: str(d.intro.note) };
+      if (d.passed && typeof d.passed === "object") state.passed = { done: d.passed.done === true, reason: PASS_REASONS.includes(d.passed.reason) ? d.passed.reason : "", note: str(d.passed.note) };
+      state.briefRead = d.briefRead === true;
+      if (d.decision && typeof d.decision === "object") state.decision = { choice: ["yes", "no"].includes(d.decision.choice) ? d.decision.choice : null, reason: PASS_REASONS.includes(d.decision.reason) ? d.decision.reason : "", note: str(d.decision.note), sent: d.decision.sent === true };
       if (d.account && typeof d.account === "object") { state.account.signedIn = d.account.signedIn === true; state.account.username = str(d.account.username); }
-      if (d.brief && typeof d.brief === "object") state.brief = { approved: d.brief.approved === true, editing: false, note: str(d.brief.note), noteSent: d.brief.noteSent === true };
-      state.call.ended = d.callEnded === true && state.step === "psychologist";
-      const t = Number(d.episodeTime);
-      if (state.step === "episode" && t > 0) state.player.time = Math.min(EPISODE_LENGTH, t);
     } catch (e) {
       console.warn("Katalyzr: couldn't restore saved progress, starting fresh.", e);
     }
@@ -216,25 +234,39 @@
 
   function goTo(step) {
     const idx = STEPS.indexOf(step);
-    if (idx > STEPS.indexOf("build") && !checklist(state.applicant).every((c) => c.done)) {
-      const filled = Object.fromEntries(Object.entries(state.applicant).filter(([, v]) => (Array.isArray(v) ? v.length > 0 : !!v)));
-      state.applicant = { ...SAMPLE_APPLICANT, ...filled };
+    // Jumping ahead (e.g. from the prototype dropdown) fills anything missing with the sample, so every page has something to show
+    if (idx > STEPS.indexOf("build") && !checklist(state.card).every((c) => c.done)) {
+      const filled = Object.fromEntries(Object.entries(state.card).filter(([, v]) => (Array.isArray(v) ? v.length > 0 : !!v)));
+      state.card = cleanCard({ ...SAMPLE_CARD, ...filled });
     }
-    state.episodeListened = idx > STEPS.indexOf("episode");
+    if (idx > STEPS.indexOf("role") && !roleChecklist(state.role).every((c) => c.done)) {
+      const filled = Object.fromEntries(Object.entries(state.role).filter(([, v]) => (Array.isArray(v) ? v.length > 0 : !!v)));
+      state.role = cleanRole({ ...SAMPLE_ROLE, ...filled });
+    }
+    if (idx > STEPS.indexOf("match")) { state.intro.requested = true; state.passed.done = false; }
+    if (idx > STEPS.indexOf("brief")) state.briefRead = true;
     state.step = step;
     state.showErrors = false;
+    state.roleErrors = false;
     state.chipDrafts = {};
-    state.flipped = false;
+    state.flipped = step === "match" && state.intro.requested;
     state.modal = null;
-    state.player = { time: 0, playing: false, speed: 1, chaptersOpen: false };
-    state.call = { joined: false, ended: false, seconds: 0, mic: true, cam: true, captions: true };
+    state.call = { joined: false, seconds: 0, mic: true, cam: true, captions: true };
     clearTimers();
     render(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
-    startStepTimers();
   }
-  function updateApplicant(patch) { state.applicant = { ...state.applicant, ...patch }; render(); }
-  function restart() { clearProgress(); state.account = { signedIn: false, username: "", password: "", confirm: "", show: false, errors: {} }; state.flipped = false; state.applicant = { ...EMPTY_APPLICANT }; state.optedOut = false; state.optOutReason = ""; state.brief = { approved: false, editing: false, note: "", noteSent: false }; state.linkedin = { url: "", status: "idle", error: "", imported: false }; state.booking = freshBookings(); goTo("welcome"); }
+  function updateCard(patch) { state.card = { ...state.card, ...patch }; render(); }
+  function updateRole(patch) { state.role = { ...state.role, ...patch }; render(); }
+  function restart() {
+    clearProgress();
+    Object.assign(state, {
+      account: freshAccount(), card: { ...EMPTY_CARD }, role: { ...EMPTY_ROLE }, flipped: false, draft: { imported: false },
+      optedOut: false, optOutReason: "", intro: { requested: false, note: "" }, passed: { done: false, reason: "", note: "" },
+      briefRead: false, booking: freshBookings(), decision: { choice: null, reason: "", note: "", sent: false },
+    });
+    goTo("welcome");
+  }
 
   /* ---------- Helpers ---------- */
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -340,7 +372,7 @@
   const iconTile = (name, size = "size-10") =>
     `<span class="${cx("flex shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground", size)}">${icon(name, "size-5")}</span>`;
   // Icon shown next to each page's eyebrow label
-  const STEP_ICONS = { build: "profile-card", waiting: "sparkles", match: "handshake", episode: "headphones", psychologist: "brain", "hiring-manager": "hiring-manager", complete: "party-popper" };
+  const STEP_ICONS = { build: "profile-card", role: "briefcase-business", match: "handshake", brief: "brain", interview: "video", decision: "circle-check", complete: "party-popper" };
   function pageHeading({ eyebrow, title, description }) {
     const ic = STEP_ICONS[state.step];
     return `<div class="mb-8 max-w-2xl">
@@ -446,7 +478,7 @@
   function goBetween(live, className) {
     return `<div class="${cx("inline-flex items-center gap-3 rounded-full border border-brass/50 bg-card py-1.5 pl-1.5 pr-4 shadow-sm", className)}">
       <div class="relative">${avatar(PSYCH, "size-10 rounded-full")}${live ? `<span class="absolute -right-0.5 -top-0.5 flex size-3"><span class="absolute inline-flex size-full animate-ping rounded-full bg-primary/60"></span><span class="relative inline-flex size-3 rounded-full border-2 border-card bg-primary"></span></span>` : ""}</div>
-      <div class="text-left"><p class="text-sm font-medium leading-tight">${esc(PSYCH.name)}</p><p class="text-xs text-muted-foreground">Your advocate · CSG</p></div>
+      <div class="text-left"><p class="text-sm font-medium leading-tight">${esc(PSYCH.name)}</p><p class="text-xs text-muted-foreground">Talent psychologist · CSG</p></div>
     </div>`;
   }
 
@@ -454,12 +486,12 @@
   function progressStage() {
     switch (state.step) {
       case "welcome": case "build": return 1;
-      case "waiting": return 2;
-      case "match": return 3;
-      case "episode": return state.episodeListened ? 4 : 3;
-      case "psychologist": return 4;
-      case "hiring-manager": return 5;
-      case "complete": return 6;
+      case "role": return 2;
+      case "match": return state.intro.requested ? 4 : 3;
+      case "brief": return 4;
+      case "interview": return 5;
+      case "decision": return 6;
+      case "complete": return 7;
     }
   }
   function progressNav() {
@@ -493,8 +525,8 @@
       <header class="csg-header border-b"><div class="mx-auto flex max-w-7xl items-center justify-between px-8 py-4">
         <div class="flex items-center gap-3">${CSG_MARK}<span class="font-serif text-2xl tracking-tight">Katalyzr</span><span class="text-xs text-muted-foreground">by Culminate Strategy Group</span></div>
         <div class="flex items-center gap-4">
-          <span class="flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground">${icon("lock", "size-3")}${onAccount ? "Invite only" : "Private invitation · KTZ-0417"}</span>
-          <label class="flex items-center gap-2 text-xs text-muted-foreground"><span>Prototype</span>
+          <span class="flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground">${icon("lock", "size-3")}${onAccount ? "Invite only" : "Private invitation · KTZ-HM-047"}</span>
+          <label class="flex items-center gap-2 text-xs text-muted-foreground"><span>Hiring manager prototype</span>
             <select id="step-select" class="rounded-md border bg-card px-2 py-1 text-xs text-foreground">${
               `<option value="account"${onAccount ? " selected" : ""}>Sign in</option>` +
               STEPS.map((s, i) => `<option value="${s}"${!onAccount && s === state.step ? " selected" : ""}>${i}. ${esc(STEP_LABELS[s])}</option>`).join("")
@@ -512,14 +544,39 @@
   /* ---------- Sign in (the start page for everyone, before the personal invitation) ---------- */
   // Each invitation email explains who Culminate is and gives a username + password. Signing in with them
   // opens that person's personal invitation. Prototype: only Jordan's demo login exists.
-  const DEMO_LOGIN = { username: "jordan.ellis", password: "Katalyzr2026" }; // prototype only: "Fill as Jordan"
+  // The same sign-in page is used by applicants and hiring managers: the login says which one you are.
+  // Prototype: these demo logins stand in for the ones sent in each invitation email.
+  const THIS_ROLE = "manager";
+  const LOGINS = {
+    "jordan.ellis": { password: "Katalyzr2026", role: "applicant", url: "../applicant/" },
+    "elena.vasquez": { password: "Katalyzr2026", role: "manager", url: "../hiring-manager/" },
+  };
+  const DEMO_LOGIN = { username: "elena.vasquez", password: LOGINS["elena.vasquez"].password }; // prototype only: "Fill as Elena"
+  const HANDOFF_KEY = "katalyzr-signin-handoff"; // passes a sign-in to the other prototype for a moment
+  function findLogin(acc) {
+    const l = LOGINS[acc.username.trim().toLowerCase()];
+    return l && l.password === acc.password ? l : null;
+  }
   function signInProblems(acc) {
     const e = {};
     if (!acc.username.trim()) e.username = "Enter the username from your invitation email.";
     if (!acc.password) e.password = "Enter the password from your invitation email.";
-    if (!e.username && !e.password && (acc.username.trim().toLowerCase() !== DEMO_LOGIN.username || acc.password !== DEMO_LOGIN.password))
+    if (!e.username && !e.password && !findLogin(acc))
       e.form = "That username and password don’t match an invitation. Check your invitation email and try again.";
     return e;
+  }
+  // If someone signed in on the other prototype's page with a login for this one, pick it up
+  function takeHandoff() {
+    try {
+      const h = JSON.parse(localStorage.getItem(HANDOFF_KEY));
+      localStorage.removeItem(HANDOFF_KEY);
+      if (h && h.role === THIS_ROLE && Date.now() - h.at < 120000) {
+        state.account = { ...freshAccount(), signedIn: true, username: str(h.username) };
+        state.step = "welcome";
+        return true;
+      }
+    } catch (e) { /* storage unavailable */ }
+    return false;
   }
   function accountScreen() {
     const acc = state.account, err = acc.errors || {}, type = acc.show ? "text" : "password";
@@ -555,8 +612,8 @@
         </div>
         <button type="submit" data-slot="button" class="${merge(cx(BTN_BASE, BTN_VARIANT.default, BTN_SIZE.lg, "csg-cta mt-2 h-12 w-full gap-2 rounded-full text-base"))}">Sign in${icon("arrow-right", "size-4")}</button>
         <p class="text-center text-xs text-muted-foreground">Can’t find your invitation email? Contact Culminate Strategy Group.</p>
-        <!-- Prototype only: fills Jordan's demo login from the invitation email. Remove for the final app. -->
-        <button type="button" data-action="acc-fill" class="k-proto-skip self-center">${icon("sparkles", "size-3.5")}Prototype only · Fill as Jordan</button>
+        <!-- Prototype only: fills Elena's demo login from the invitation email. Remove for the final app. -->
+        <button type="button" data-action="acc-fill" class="k-proto-skip self-center">${icon("sparkles", "size-3.5")}Prototype only · Fill as Elena</button>
       </form>
     </div>`;
   }
@@ -569,135 +626,18 @@
       if (bad) bad.focus();
       return;
     }
+    // An applicant's login: send them to the applicant prototype, already signed in
+    const login = findLogin(acc);
+    if (login.role !== THIS_ROLE) {
+      try { localStorage.setItem(HANDOFF_KEY, JSON.stringify({ username: acc.username.trim().toLowerCase(), role: login.role, at: Date.now() })); } catch (e) { /* storage unavailable */ }
+      acc.password = "";
+      location.href = login.url;
+      return;
+    }
     // Prototype: the password is checked, then cleared right away. Only the username is kept.
     acc.username = acc.username.trim(); acc.password = ""; acc.confirm = ""; acc.show = false; acc.errors = {};
     acc.signedIn = true;
     goTo("welcome");
-  }
-
-  function welcomeScreen() {
-    return `<div class="grid grid-cols-[1.1fr_1fr] items-center gap-16 py-6">
-      <section aria-labelledby="welcome-heading">
-        <p class="mb-4 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">${icon("mail-open", "size-4")}A personal invitation</p>
-        <h1 id="welcome-heading" class="font-serif text-7xl leading-[1] text-balance">Jordan, someone wants to <em class="text-primary">meet you</em>.</h1>
-        <div class="mt-8 max-w-xl space-y-4 text-lg leading-relaxed text-pretty">
-          <p>We came across your work on LinkedIn and kept coming back to it. Katalyzr is invite-only: we introduce a very small number of people to hiring managers who share how they see the world.</p>
-          <p class="text-muted-foreground">There are no application forms and no interview gauntlet. Just two conversations.</p>
-        </div>
-        <button type="button" data-action="modal" data-modal="how" class="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary underline decoration-primary/40 underline-offset-4 hover:decoration-primary">${icon("circle-help", "size-4")}How did you find me?</button>
-        <div class="mt-8 flex items-center gap-3">
-          <div class="flex size-10 items-center justify-center rounded-full bg-primary font-serif text-lg text-primary-foreground">PN</div>
-          <div><p class="font-serif text-xl italic leading-tight">Priya Natarajan</p><p class="text-xs text-muted-foreground">Partner, Culminate Strategy Group</p></div>
-        </div>
-        <div class="mt-10 flex items-center gap-6">
-          ${button({ size: "lg", className: "csg-cta h-12 gap-2 rounded-full px-6 text-base", attrs: 'data-action="goto" data-step="build"', content: "Accept invitation" + icon("arrow-right", "size-4") })}
-          <button type="button" data-action="modal" data-modal="optout" class="text-sm text-muted-foreground underline decoration-dotted underline-offset-4 hover:text-foreground">Not interested? Opt out</button>
-        </div>
-      </section>
-      <aside aria-label="How it works" class="flex flex-col gap-8">
-        <div class="relative mx-auto h-72 w-full max-w-md" aria-hidden="true">
-          <div class="absolute left-6 top-6 h-64 w-48 -rotate-6 rounded-2xl border bg-card p-4 shadow-lg">
-            <div class="h-28 rounded-lg bg-muted"></div><p class="mt-3 font-serif text-xl">You</p>
-            <div class="mt-2 flex gap-1.5"><span class="h-4 w-12 rounded-full bg-secondary"></span><span class="h-4 w-16 rounded-full bg-accent"></span></div>
-          </div>
-          <div class="absolute right-6 top-0 h-64 w-48 rotate-6 rounded-2xl border border-dashed border-brass bg-card/60 p-4 shadow-lg">
-            <div class="h-28 rounded-lg bg-accent/50"></div><p class="mt-3 font-serif text-xl text-muted-foreground">Your match</p>
-            <div class="mt-2 flex gap-1.5"><span class="h-4 w-16 rounded-full bg-accent"></span><span class="h-4 w-10 rounded-full bg-secondary"></span></div>
-          </div>
-        </div>
-        <ol class="flex flex-col gap-3">${HOW_IT_WORKS.map((h, i) => `<li class="flex items-center gap-4 rounded-xl border bg-card/70 p-4">
-          <span class="csg-step-num font-serif text-3xl leading-none text-brass">${i + 1}</span>
-          ${iconTile(h.icon)}
-          <div><p class="font-medium">${esc(h.title)}</p><p class="text-sm text-muted-foreground">${esc(h.body)}</p></div></li>`).join("")}</ol>
-      </aside>
-    </div>`;
-  }
-
-  // Shown instead of the welcome page after the applicant opts out
-  function optedOutScreen() {
-    return `<section class="mx-auto flex max-w-xl flex-col items-center py-16 text-center">
-      ${iconTile("circle-check", "size-16")}
-      <p class="mt-6 mb-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">Invitation declined</p>
-      <h1 class="font-serif text-5xl leading-[1.05] text-balance">You’ve opted out.</h1>
-      <p class="mt-4 text-base leading-relaxed text-muted-foreground text-pretty">Thanks for letting us know, Jordan. We won’t contact you about Katalyzr again, and your details won’t be shared with any hiring manager. We’ll also remove the LinkedIn profile details we used to invite you.</p>
-      <p class="mt-3 text-sm text-muted-foreground">Questions? Reach out to Culminate Strategy Group any time.</p>
-      <div class="mt-8 flex items-center gap-4">
-        ${button({ variant: "outline", className: "h-11 gap-2 rounded-full px-5", attrs: 'data-action="undo-optout"', content: icon("rotate-ccw", "size-4") + "Changed your mind? Undo" })}
-      </div>
-    </section>`;
-  }
-
-  function modal() {
-    if (!state.modal) return "";
-    const close = `<button type="button" data-action="close-modal" class="k-modal-close rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-foreground" aria-label="Close">${icon("x", "size-5")}</button>`;
-    let body = "";
-    if (state.modal === "how") {
-      const item = (ic, title, text) => `<li class="flex gap-4">${iconTile(ic)}<div><p class="font-medium">${title}</p><p class="mt-1 text-sm leading-relaxed text-muted-foreground">${text}</p></div></li>`;
-      body = `<p class="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">About your invitation</p>
-        <h2 id="modal-title" class="font-serif text-3xl leading-tight">How did we find you?</h2>
-        <p class="mt-3 text-base leading-relaxed text-muted-foreground">A fair question — you never applied. Here’s exactly how it worked.</p>
-        <ol class="mt-6 flex flex-col gap-5">
-          ${item("shield-check", "Through LinkedIn’s official API", "Culminate Strategy Group finds people using LinkedIn’s approved APIs, within LinkedIn’s terms of service. We don’t scrape LinkedIn or buy contact lists.")}
-          ${item("eye", "Only your professional profile", "We looked at the professional details on your LinkedIn profile, like your current role, work history and skills. Nothing private: not your messages or your connections.")}
-          ${item("hiring-manager", "Chosen by a person, not an algorithm", "Someone at CSG read your profile alongside a hiring manager they’ve already interviewed on the Uncommon Operator podcast, and thought you two see work the same way.")}
-          ${item("sparkles", "Why so few invitations", "Katalyzr is invite-only. We introduce a very small number of people, so this isn’t a mass message — it was sent to you specifically.")}
-          ${item("circle-check", "Your choice, every step", "Nothing happens unless you accept. You can opt out now or at any point, and we’ll stop contacting you and remove the details we used.")}
-        </ol>
-        <div class="mt-8 flex items-center justify-between border-t pt-5">
-          <button type="button" data-action="modal" data-modal="optout" class="text-sm text-muted-foreground underline decoration-dotted underline-offset-4 hover:text-foreground">I’d rather opt out</button>
-          ${button({ size: "lg", className: "csg-cta h-11 gap-2 rounded-full px-5", attrs: 'data-action="close-modal"', content: "Got it" })}
-        </div>`;
-    } else if (state.modal === "linkedin") {
-      const li = state.linkedin, loading = li.status === "loading";
-      body = `<p class="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">${icon("linkedin", "size-4")}Fill from LinkedIn</p>
-        <h2 id="modal-title" class="font-serif text-3xl leading-tight">Start your card from LinkedIn</h2>
-        <p class="mt-3 text-base leading-relaxed text-muted-foreground">Paste a link to your LinkedIn profile and we’ll fill in what’s already there, so you don’t have to type it twice.</p>
-        <div class="mt-6 grid grid-cols-2 gap-4">
-          <div class="rounded-xl border bg-card/70 p-4"><p class="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${icon("check", "size-3.5 text-primary")}We’ll fill in</p>
-            <ul class="flex flex-col gap-1 text-sm"><li>Photo</li><li>Name and current role</li><li>Years of experience</li><li>What you’ve built</li><li>Skills</li></ul></div>
-          <div class="rounded-xl border bg-card/70 p-4"><p class="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${icon("user-round", "size-3.5 text-brass")}You’ll choose</p>
-            <ul class="flex flex-col gap-1 text-sm"><li>Values</li><li>Working style</li><li>Personality</li><li>Mindset</li></ul></div>
-        </div>
-        <div class="mt-6 flex flex-col gap-1.5">
-          <label for="li-url" class="text-sm font-medium">Your LinkedIn profile link</label>
-          <input id="li-url" type="url" inputmode="url" autocomplete="url" value="${esc(li.url)}" placeholder="linkedin.com/in/your-name"${loading ? " disabled" : ""} class="${cx(INPUT, li.error && INVALID)}">
-          ${li.error ? `<p class="text-sm" style="color:var(--csg-coral-deep)">${esc(li.error)}</p>` : `<p class="text-xs text-muted-foreground">Read through LinkedIn’s official API. You can edit anything afterwards.</p>`}
-        </div>
-        <div class="mt-8 flex items-center justify-end gap-3 border-t pt-5">
-          ${button({ variant: "outline", className: "h-11 rounded-full px-5", attrs: `data-action="close-modal"${loading ? " disabled" : ""}`, content: "Cancel" })}
-          ${button({ size: "lg", className: "csg-cta h-11 gap-2 rounded-full px-5", attrs: `data-action="li-import"${loading ? " disabled" : ""}`, content: loading ? "Reading your profile…" : icon("linkedin", "size-4") + "Fill my card" })}
-        </div>`;
-    } else if (state.modal === "why-psych") {
-      const item = (ic, title, text) => `<li class="flex gap-4">${iconTile(ic)}<div><p class="font-medium">${title}</p><p class="mt-1 text-sm leading-relaxed text-muted-foreground">${text}</p></div></li>`;
-      const hm = firstName(MATCH.name);
-      body = `<p class="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">About this conversation</p>
-        <h2 id="modal-title" class="font-serif text-3xl leading-tight">Why a psychologist first?</h2>
-        <p class="mt-3 text-base leading-relaxed text-muted-foreground">It’s a fair question. Marcus isn’t a gatekeeper — here’s what he’s actually there for.</p>
-        <ol class="mt-6 flex flex-col gap-5">
-          ${item("circle-check", "It’s not a test", "There’s no score and no pass or fail. You were already chosen — this conversation is about making the introduction go well.")}
-          ${item("shield-check", "He’s on your side", `Marcus works for the introduction, not for ${hm}. His job is to help you show up as yourself.`)}
-          ${item("brain", "He puts how you think into words", `A résumé shows what you’ve done, not how you think, and how you think is what ${hm} cares about most. Marcus helps translate it.`)}
-          ${item("messages-square", "Your first conversation with " + hm + " starts deeper", `Because Marcus already knows you both, you skip the screening questions and get straight to the real conversation.`)}
-          ${item("eye", "Private by default", `What you say stays between you and Marcus. The only thing ${hm} sees is a short Mindset brief that you read and approve first.`)}
-        </ol>
-        <div class="mt-8 flex items-center justify-end border-t pt-5">
-          ${button({ size: "lg", className: "csg-cta h-11 gap-2 rounded-full px-5", attrs: 'data-action="close-modal"', content: "Got it" })}
-        </div>`;
-    } else if (state.modal === "optout") {
-      const reasons = ["I’m not looking for a new role right now", "I don’t want to be contacted", "This isn’t the right fit for me", "Something else"];
-      body = `<p class="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">Opt out</p>
-        <h2 id="modal-title" class="font-serif text-3xl leading-tight">Opt out of Katalyzr?</h2>
-        <p class="mt-3 text-base leading-relaxed text-muted-foreground">We’ll stop contacting you, won’t share your details with any hiring manager, and will remove the LinkedIn profile details we used to invite you.</p>
-        <fieldset class="mt-6"><legend class="mb-3 text-sm font-medium">Mind telling us why? <span class="font-normal text-muted-foreground">(optional)</span></legend>
-          <div class="flex flex-col gap-2">${reasons.map((r, i) => `<label class="k-radio flex cursor-pointer items-center gap-3 rounded-lg border bg-card px-4 py-3 text-sm hover:bg-secondary"><input type="radio" name="optout-reason" id="optout-reason-${i}" value="${esc(r)}"${state.optOutReason === r ? " checked" : ""}>${esc(r)}</label>`).join("")}</div>
-        </fieldset>
-        <div class="mt-8 flex items-center justify-end gap-3 border-t pt-5">
-          ${button({ variant: "outline", className: "h-11 rounded-full px-5", attrs: 'data-action="close-modal"', content: "Keep my invitation" })}
-          ${button({ size: "lg", className: "h-11 gap-2 rounded-full px-5", attrs: 'data-action="confirm-optout"', content: icon("log-out", "size-4") + "Opt out" })}
-        </div>`;
-    }
-    return `<div class="k-modal-backdrop" data-action="close-modal"></div>
-      <div class="k-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">${close}${body}</div>`;
   }
 
   const INPUT = "w-full rounded-lg border bg-card px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-3 focus:ring-primary/15";
@@ -720,46 +660,155 @@
         </div>
       </div></fieldset>`;
   }
-  // Chip-group definitions: how each picker reads and writes the applicant.
+  /* ---------- Hiring manager screens ---------- */
+  function welcomeScreen() {
+    const me = firstName(state.card.name) || firstName(SAMPLE_CARD.name);
+    return `<div class="grid grid-cols-[1.1fr_1fr] items-center gap-16 py-6">
+      <section aria-labelledby="welcome-heading">
+        <p class="mb-4 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">${icon("mail-open", "size-4")}A personal invitation</p>
+        <h1 id="welcome-heading" class="font-serif text-7xl leading-[1] text-balance">${esc(me)}, let’s find your <em class="text-primary">next great hire</em>.</h1>
+        <div class="mt-8 max-w-xl space-y-4 text-lg leading-relaxed text-pretty">
+          <p>Thank you for joining me on ${PODCAST}. You told me what kind of person you’d love to work with. Katalyzr is how Culminate introduces you to them.</p>
+          <p class="text-muted-foreground">No job posting and no stack of résumés. One candidate, chosen by hand, who already shares how you see the world.</p>
+        </div>
+        <button type="button" data-action="modal" data-modal="how" class="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary underline decoration-primary/40 underline-offset-4 hover:decoration-primary">${icon("circle-help", "size-4")}How does Culminate find candidates?</button>
+        <div class="mt-8 flex items-center gap-3">
+          <div class="flex size-10 items-center justify-center rounded-full bg-primary font-serif text-lg text-primary-foreground">K</div>
+          <div><p class="font-serif text-xl italic leading-tight">${esc(KARRIE.name)}</p><p class="text-xs text-muted-foreground">${esc(KARRIE.title)}</p></div>
+        </div>
+        <div class="mt-10 flex items-center gap-6">
+          ${button({ size: "lg", className: "csg-cta h-12 gap-2 rounded-full px-6 text-base", attrs: 'data-action="goto" data-step="build"', content: "Accept invitation" + icon("arrow-right", "size-4") })}
+          <button type="button" data-action="modal" data-modal="optout" class="text-sm text-muted-foreground underline decoration-dotted underline-offset-4 hover:text-foreground">Not right now? Opt out</button>
+        </div>
+      </section>
+      <aside aria-label="How it works" class="flex flex-col gap-8">
+        <div class="relative mx-auto h-72 w-full max-w-md" aria-hidden="true">
+          <div class="absolute left-6 top-6 h-64 w-48 -rotate-6 rounded-2xl border bg-card p-4 shadow-lg">
+            <div class="h-28 rounded-lg bg-muted"></div><p class="mt-3 font-serif text-xl">You</p>
+            <div class="mt-2 flex gap-1.5"><span class="h-4 w-12 rounded-full bg-secondary"></span><span class="h-4 w-16 rounded-full bg-accent"></span></div>
+          </div>
+          <div class="absolute right-6 top-0 h-64 w-48 rotate-6 rounded-2xl border border-dashed border-brass bg-card/60 p-4 shadow-lg">
+            <div class="h-28 rounded-lg bg-accent/50"></div><p class="mt-3 font-serif text-xl text-muted-foreground">Your candidate</p>
+            <div class="mt-2 flex gap-1.5"><span class="h-4 w-16 rounded-full bg-accent"></span><span class="h-4 w-10 rounded-full bg-secondary"></span></div>
+          </div>
+        </div>
+        <ol class="flex flex-col gap-3">${HOW_IT_WORKS.map((h, i) => `<li class="flex items-center gap-4 rounded-xl border bg-card/70 p-4">
+          <span class="csg-step-num font-serif text-3xl leading-none text-brass">${i + 1}</span>
+          ${iconTile(h.icon)}
+          <div><p class="font-medium">${esc(h.title)}</p><p class="text-sm text-muted-foreground">${esc(h.body)}</p></div></li>`).join("")}</ol>
+      </aside>
+    </div>`;
+  }
+
+  function optedOutScreen() {
+    return `<section class="mx-auto flex max-w-xl flex-col items-center py-16 text-center">
+      ${iconTile("circle-check", "size-16")}
+      <p class="mt-6 mb-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">Invitation declined</p>
+      <h1 class="font-serif text-5xl leading-[1.05] text-balance">You’ve opted out.</h1>
+      <p class="mt-4 text-base leading-relaxed text-muted-foreground text-pretty">Thanks for letting us know. We won’t introduce any candidates to you, and nothing about you or your team will be shared. If the timing changes, Karrie is only an email away.</p>
+      <div class="mt-8">${button({ variant: "outline", className: "h-11 gap-2 rounded-full px-5", attrs: 'data-action="undo-optout"', content: icon("rotate-ccw", "size-4") + "Changed your mind? Undo" })}</div>
+    </section>`;
+  }
+
+  function modal() {
+    if (!state.modal) return "";
+    const close = `<button type="button" data-action="close-modal" class="k-modal-close rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-foreground" aria-label="Close">${icon("x", "size-5")}</button>`;
+    const item = (ic, title, text) => `<li class="flex gap-4">${iconTile(ic)}<div><p class="font-medium">${title}</p><p class="mt-1 text-sm leading-relaxed text-muted-foreground">${text}</p></div></li>`;
+    const radios = (name, list, current) => `<div class="flex flex-col gap-2">${list.map((r, i) => `<label class="k-radio flex cursor-pointer items-center gap-3 rounded-lg border bg-card px-4 py-3 text-sm hover:bg-secondary"><input type="radio" name="${name}" id="${name}-${i}" value="${esc(r)}"${current === r ? " checked" : ""}>${esc(r)}</label>`).join("")}</div>`;
+    const cand = firstName(MATCH.name);
+    let body = "";
+    if (state.modal === "how") {
+      body = `<p class="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">About your candidate</p>
+        <h2 id="modal-title" class="font-serif text-3xl leading-tight">How Culminate finds your candidate</h2>
+        <p class="mt-3 text-base leading-relaxed text-muted-foreground">You already know us through Karrie. Here’s how we find the person you’ll meet, and why you can trust the match.</p>
+        <ol class="mt-6 flex flex-col gap-5">
+          ${item("shield-check", "Found through LinkedIn’s official API", "Culminate finds people using LinkedIn’s approved APIs, within LinkedIn’s terms of service. No scraping, no bought lists.")}
+          ${item("hiring-manager", "Chosen by a person, not an algorithm", `Someone at Culminate compares candidates with what you shared on ${PODCAST} and the role you define, then picks one.`)}
+          ${item("circle-check", "They said yes too", "Your candidate accepted their own private invitation and built their own card. Nobody is introduced without agreeing to it.")}
+          ${item("brain", "They talk with our psychologist first", "Dr. Marcus Hale meets them before you do. You get a short Mindset brief that the candidate has read and approved.")}
+          ${item("eye", "Your details stay private", "Your card and role are only shared with the one candidate you’re introduced to. Nobody can browse Katalyzr.")}
+        </ol>
+        <div class="mt-8 flex items-center justify-end border-t pt-5">${button({ size: "lg", className: "csg-cta h-11 gap-2 rounded-full px-5", attrs: 'data-action="close-modal"', content: "Got it" })}</div>`;
+    } else if (state.modal === "optout") {
+      body = `<p class="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">Opt out</p>
+        <h2 id="modal-title" class="font-serif text-3xl leading-tight">Opt out of Katalyzr?</h2>
+        <p class="mt-3 text-base leading-relaxed text-muted-foreground">We won’t introduce any candidates to you, and nothing about you or your team will be shared.</p>
+        <fieldset class="mt-6"><legend class="mb-3 text-sm font-medium">Mind telling us why? <span class="font-normal text-muted-foreground">(optional)</span></legend>
+          ${radios("optout-reason", ["I’m not hiring right now", "I’ve already found someone", "This isn’t the right fit for me", "Something else"], state.optOutReason)}</fieldset>
+        <div class="mt-8 flex items-center justify-end gap-3 border-t pt-5">
+          ${button({ variant: "outline", className: "h-11 rounded-full px-5", attrs: 'data-action="close-modal"', content: "Keep my invitation" })}
+          ${button({ size: "lg", className: "h-11 gap-2 rounded-full px-5", attrs: 'data-action="confirm-optout"', content: icon("log-out", "size-4") + "Opt out" })}
+        </div>`;
+    } else if (state.modal === "request") {
+      body = `<p class="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">${icon("send", "size-4")} Request the introduction</p>
+        <h2 id="modal-title" class="font-serif text-3xl leading-tight">Ask to meet ${esc(cand)}</h2>
+        <p class="mt-3 text-base leading-relaxed text-muted-foreground">${esc(cand)} will see your card and your note. Culminate makes the introduction once ${esc(cand)} accepts.</p>
+        <div class="mt-6 flex flex-col gap-1.5">
+          <label for="intro-note" class="text-sm font-medium">A note for ${esc(cand)} <span class="font-normal text-muted-foreground">(optional)</span></label>
+          <textarea id="intro-note" rows="3" maxlength="280" class="${INPUT} resize-none" placeholder="e.g. I loved how you built your ops team from 3 to 60.">${esc(state.intro.note)}</textarea>
+        </div>
+        <div class="mt-8 flex items-center justify-end gap-3 border-t pt-5">
+          ${button({ variant: "outline", className: "h-11 rounded-full px-5", attrs: 'data-action="close-modal"', content: "Cancel" })}
+          ${button({ size: "lg", className: "csg-cta h-11 gap-2 rounded-full px-5", attrs: 'data-action="request-send"', content: icon("send", "size-4") + "Send request" })}
+        </div>`;
+    } else if (state.modal === "pass") {
+      body = `<p class="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">Not the right fit?</p>
+        <h2 id="modal-title" class="font-serif text-3xl leading-tight">Pass on ${esc(cand)}?</h2>
+        <p class="mt-3 text-base leading-relaxed text-muted-foreground">Tell Culminate what didn’t fit, and they’ll use it to choose who to introduce next. ${esc(cand)} won’t see your reason.</p>
+        <fieldset class="mt-6"><legend class="mb-3 text-sm font-medium">What didn’t fit?</legend>${radios("pass-reason", PASS_REASONS, state.passed.reason)}</fieldset>
+        ${state.passErr ? `<p class="mt-2 text-sm" role="alert" style="color:var(--csg-coral-deep)">Pick a reason so Culminate knows what to look for next.</p>` : ""}
+        <div class="mt-5 flex flex-col gap-1.5"><label for="pass-note" class="text-sm font-medium">Anything else? <span class="font-normal text-muted-foreground">(optional)</span></label>
+          <textarea id="pass-note" rows="2" maxlength="280" class="${INPUT} resize-none">${esc(state.passed.note)}</textarea></div>
+        <div class="mt-8 flex items-center justify-end gap-3 border-t pt-5">
+          ${button({ variant: "outline", className: "h-11 rounded-full px-5", attrs: 'data-action="close-modal"', content: "Keep this match" })}
+          ${button({ size: "lg", className: "h-11 gap-2 rounded-full px-5", attrs: 'data-action="pass-confirm"', content: "Pass on this match" })}
+        </div>`;
+    }
+    return `<div class="k-modal-backdrop" data-action="close-modal"></div>
+      <div class="k-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">${close}${body}</div>`;
+  }
+
+  // Step 1: the hiring manager's own card (secondary to the role and the episode when CSG matches)
   function chipGroups() {
-    const a = state.applicant;
+    const a = state.card;
     const custom = a.customPersonalSkills || [];
     const isPersonal = (s) => PERSONAL_SKILLS.includes(s) || custom.includes(s);
     const personal = a.skills.filter(isPersonal), tech = a.skills.filter((s) => !isPersonal(s));
     return {
-      tech: { label: "Technical skills", hint: "up to 3", options: TECH_SKILLS, selected: tech, max: 3, invalid: a.skills.length < 2, set: (v) => updateApplicant({ skills: [...v, ...personal] }) },
-      personal: { label: "Personal skills", hint: "up to 3", options: PERSONAL_SKILLS, selected: personal, max: 3, invalid: a.skills.length < 2, set: (v) => updateApplicant({ skills: [...tech, ...v], customPersonalSkills: v.filter((s) => !PERSONAL_SKILLS.includes(s)) }) },
-      values: { label: "Values", hint: "pick at least 2", options: VALUES, selected: a.values, max: 4, invalid: a.values.length < 2, set: (v) => updateApplicant({ values: v }) },
-      workingStyle: { label: "Working style", hint: "up to 3", options: WORKING_STYLES, selected: a.workingStyle, max: 3, invalid: a.workingStyle.length === 0, set: (v) => updateApplicant({ workingStyle: v }) },
-      personality: { label: "Personality", hint: "pick 3–4", options: PERSONALITIES, selected: a.personality, max: 4, invalid: a.personality.length < 3, set: (v) => updateApplicant({ personality: v }) },
+      tech: { label: "Technical skills", hint: "up to 3", options: TECH_SKILLS, selected: tech, max: 3, invalid: a.skills.length < 2, set: (v) => updateCard({ skills: [...v, ...personal] }) },
+      personal: { label: "Personal skills", hint: "up to 3", options: PERSONAL_SKILLS, selected: personal, max: 3, invalid: a.skills.length < 2, set: (v) => updateCard({ skills: [...tech, ...v], customPersonalSkills: v.filter((s) => !PERSONAL_SKILLS.includes(s)) }) },
+      values: { label: "Values", hint: "pick at least 2", options: VALUES, selected: a.values, max: 4, invalid: a.values.length < 2, set: (v) => updateCard({ values: v }) },
+      workingStyle: { label: "Working style", hint: "up to 3", options: WORKING_STYLES, selected: a.workingStyle, max: 3, invalid: a.workingStyle.length === 0, set: (v) => updateCard({ workingStyle: v }) },
+      personality: { label: "Personality", hint: "pick 3–4", options: PERSONALITIES, selected: a.personality, max: 4, invalid: a.personality.length < 3, set: (v) => updateCard({ personality: v }) },
+      mustHaves: { label: "Must-have skills", hint: "pick 2–4", options: [...TECH_SKILLS, ...PERSONAL_SKILLS], selected: state.role.mustHaves, max: 4, invalid: state.role.mustHaves.length < 2, set: (v) => updateRole({ mustHaves: v }) },
     };
   }
+  const field = (label, id, input) => `<div class="flex flex-col gap-1.5"><label for="${id}" class="text-sm font-medium">${label}</label>${input}</div>`;
+  const section = (title, body, ic) => `<section class="flex flex-col gap-5"><h2 class="flex items-center gap-3 font-serif text-2xl">${iconTile(ic)}${esc(title)}</h2>${body}</section>`;
+  const checklistBox = (list) => {
+    const done = list.filter((c) => c.done).length;
+    return `<div class="rounded-xl border bg-card/70 p-4">
+      <p class="mb-2 text-xs font-medium text-muted-foreground">${done} of ${list.length} complete</p>
+      <ul class="grid grid-cols-2 gap-x-3 gap-y-1.5">${list.map((c) => `<li class="${cx("flex items-center gap-1.5 text-xs", c.done ? "text-foreground" : "text-muted-foreground")}">
+        <span class="${cx("flex size-4 items-center justify-center rounded-full border", c.done && "border-primary bg-primary text-primary-foreground")}">${c.done ? icon("check", "size-2.5") : ""}</span>${esc(c.label)}</li>`).join("")}</ul></div>`;
+  };
   function buildScreen() {
-    const a = state.applicant, list = checklist(a), done = list.filter((c) => c.done).length, ready = done === list.length;
+    const a = state.card, list = checklist(a), ready = list.every((c) => c.done);
     const err = (bad) => state.showErrors && bad;
     const groups = chipGroups();
     const picker = (key) => chipPicker({ key, ...groups[key], invalid: err(groups[key].invalid) });
-    const field = (label, id, input) => `<div class="flex flex-col gap-1.5"><label for="${id}" class="text-sm font-medium">${esc(label)}</label>${input}</div>`;
-    const section = (title, body, ic) => `<section class="flex flex-col gap-5"><h2 class="flex items-center gap-3 font-serif text-2xl">${iconTile(ic)}${esc(title)}</h2>${body}</section>`;
     return `<div>
       <div class="flex items-end justify-between">
-        ${pageHeading({ eyebrow: "Step 1 · Build your card", title: "This is how you’ll be introduced.", description: "Your card is what your match sees first. Keep it honest and specific — it updates as you type." })}
+        ${pageHeading({ eyebrow: "Step 1 · Build your card", title: "This is how you’ll be introduced.", description: "Your card is what your candidate sees first. Culminate also uses it, alongside your episode and the role you define, to choose who you meet." })}
         <div class="mb-8 flex items-center gap-3">
           ${button({ variant: "outline", className: "gap-2 rounded-full", attrs: 'data-action="fill-sample"', content: icon("sparkles", "size-4") + "Fill with sample" })}
-          ${button({ size: "lg", className: "csg-cta gap-2 rounded-full px-4", attrs: 'data-action="modal" data-modal="linkedin"', content: icon("linkedin", "size-4") + "Fill from LinkedIn" })}
+          ${button({ size: "lg", className: "csg-cta gap-2 rounded-full px-4", attrs: 'data-action="draft-import"', content: icon("headphones", "size-4") + "Use my episode draft" })}
         </div>
       </div>
       <div class="grid grid-cols-[360px_minmax(0,1fr)] items-start gap-10">
-        <div class="sticky top-6 flex flex-col gap-4">
-          ${profileCard(a, { label: "You · Live preview", editing: true })}
-          <div class="rounded-xl border bg-card/70 p-4">
-            <p class="mb-2 text-xs font-medium text-muted-foreground">${done} of ${list.length} complete</p>
-            <ul class="grid grid-cols-2 gap-x-3 gap-y-1.5">${list.map((c) => `<li class="${cx("flex items-center gap-1.5 text-xs", c.done ? "text-foreground" : "text-muted-foreground")}">
-              <span class="${cx("flex size-4 items-center justify-center rounded-full border", c.done && "border-primary bg-primary text-primary-foreground")}">${c.done ? icon("check", "size-2.5") : ""}</span>${esc(c.label)}</li>`).join("")}</ul>
-          </div>
-        </div>
+        <div class="sticky top-6 flex flex-col gap-4">${profileCard(a, { label: "You · Live preview", editing: true })}${checklistBox(list)}</div>
         <form id="build-form" class="flex flex-col gap-8 rounded-2xl border bg-card p-8" novalidate>
-          ${state.linkedin.imported ? `<div class="k-li-banner" role="status">${icon("linkedin", "size-5")}<div><p class="font-medium">Filled from your LinkedIn profile</p><p class="text-sm text-muted-foreground">We added your photo, name, role, experience and skills. Check them, then choose your values, working style, personality and mindset below. Those aren’t on LinkedIn, so they’re yours to pick.</p></div><button type="button" data-action="li-dismiss" class="rounded-full p-1 text-muted-foreground hover:text-foreground" aria-label="Dismiss">${icon("x", "size-4")}</button></div>` : ""}
+          ${state.draft.imported ? `<div class="k-li-banner" role="status">${icon("headphones", "size-5")}<div><p class="font-medium">Drafted from your ${PODCAST} episode</p><p class="text-sm text-muted-foreground">We filled in your role, experience, values and working style from what you shared with Karrie. Fix anything that’s off, then choose your skills, personality and mindset. Those are yours to pick.</p></div><button type="button" data-action="draft-dismiss" class="rounded-full p-1 text-muted-foreground hover:text-foreground" aria-label="Dismiss">${icon("x", "size-4")}</button></div>` : ""}
           ${section("The basics", `
             <div class="${cx("flex items-center gap-4 rounded-lg", err(!a.photo) && "outline-2 outline-offset-4 outline-red-500")}">
               ${avatar(a, "size-16 rounded-full")}
@@ -771,155 +820,271 @@
             ${state.photoError ? `<p class="text-sm" role="alert" style="color:var(--csg-coral-deep)">${esc(state.photoError)}</p>` : ""}
             <div class="grid grid-cols-2 gap-4">
               ${field("Full name", "f-name", `<input id="f-name" data-field="name" class="${cx(INPUT, err(!a.name.trim()) && INVALID)}" value="${esc(a.name)}" autocomplete="name">`)}
-              ${field("Current role", "f-role", `<input id="f-role" data-field="role" class="${cx(INPUT, err(!a.role.trim()) && INVALID)}" value="${esc(a.role)}" autocomplete="organization-title">`)}
-            </div>`, "user-round")}
+              ${field("Your title", "f-role", `<input id="f-role" data-field="role" class="${cx(INPUT, err(!a.role.trim()) && INVALID)}" value="${esc(a.role)}" autocomplete="organization-title">`)}
+            </div>
+            ${field("Company", "f-company", `<input id="f-company" data-field="company" class="${INPUT}" value="${esc(a.company)}" autocomplete="organization">`)}`, "user-round")}
           ${section("Experience", `
             <div class="grid grid-cols-[120px_minmax(0,1fr)] gap-4">
               ${field("Years", "f-years", `<input id="f-years" data-field="experienceYears" type="number" min="0" max="60" inputmode="numeric" class="${cx(INPUT, err(!a.experienceYears.trim()) && INVALID)}" value="${esc(a.experienceYears)}">`)}
               ${field("In one sentence, what have you built?", "f-exp", `<input id="f-exp" data-field="experience" maxlength="140" class="${cx(INPUT, err(!a.experience.trim()) && INVALID)}" value="${esc(a.experience)}">`)}
             </div>
             ${picker("tech")}${picker("personal")}`, "briefcase-business")}
-          ${section("How you work", picker("values") + picker("workingStyle") + picker("personality"), "compass")}
-          ${section("Mindset", field("The belief that drives how you work", "f-mindset", `<textarea id="f-mindset" data-field="mindset" rows="2" maxlength="100" class="${cx(INPUT, "resize-none font-serif text-lg italic", err(!a.mindset.trim()) && INVALID)}">${esc(a.mindset)}</textarea>`), "lightbulb")}
+          ${section("How you lead and work", picker("values") + picker("workingStyle") + picker("personality"), "compass")}
+          ${section("Mindset", field("The belief that drives how you lead", "f-mindset", `<textarea id="f-mindset" data-field="mindset" rows="2" maxlength="100" class="${cx(INPUT, "resize-none font-serif text-lg italic", err(!a.mindset.trim()) && INVALID)}">${esc(a.mindset)}</textarea>`), "lightbulb")}
           <div class="flex items-center justify-between border-t pt-6">
-            <p class="text-sm text-muted-foreground">${ready ? "Your card is ready." : "Complete every section to find your match."}</p>
-            <button type="submit" data-slot="button" class="${merge(cx(BTN_BASE, BTN_VARIANT.default, BTN_SIZE.lg, "csg-cta h-11 gap-2 rounded-full px-5"))}">Find my match${icon("arrow-right", "size-4")}</button>
+            <p class="text-sm text-muted-foreground">${ready ? "Your card is ready." : "Complete every section to continue."}</p>
+            <button type="submit" data-slot="button" class="${merge(cx(BTN_BASE, BTN_VARIANT.default, BTN_SIZE.lg, "csg-cta h-11 gap-2 rounded-full px-5"))}">Next: define the role${icon("arrow-right", "size-4")}</button>
           </div>
         </form>
       </div></div>`;
   }
 
-  // Step 2: CSG has already chosen the match by hand, before the applicant joined.
-  // The applicant flips a face-down card to see who it is.
-  function waitingScreen() {
-    const first = firstName(MATCH.name);
-    const front = `<button type="button" data-action="flip" class="flip-front flex w-full flex-col items-center justify-center gap-5 rounded-2xl border-2 border-dashed border-brass/60 bg-card p-8 text-center shadow-sm" aria-label="Flip this card to see your match">
-        <span class="flex size-16 items-center justify-center rounded-full bg-accent">${icon("hiring-manager", "size-7 text-accent-foreground")}</span>
-        <div><p class="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Your match</p>
-          <p class="mt-2 font-serif text-2xl leading-tight text-balance">Flip this card to see your match!</p></div>
+  // Step 2: the role (the main thing Culminate matches on, with the episode)
+  function roleCard(r) {
+    const row = (ic, label, value) => `<div><p class="mb-1 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${icon(ic, "size-3.5 text-brass")}${label}</p><p class="${cx("text-sm leading-relaxed", !value && "italic text-muted-foreground/60")}">${esc(value || "Not added yet")}</p></div>`;
+    return `<article aria-label="The role" class="flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-12px_rgba(60,40,10,0.18)]">
+      <div><p class="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">The role · Live preview</p>
+        <h3 class="${cx("mt-1 font-serif text-3xl leading-tight", !r.title && "text-muted-foreground/60")}">${esc(r.title || "Role title")}</h3>
+        <p class="text-sm text-muted-foreground">${esc([state.card.company || SAMPLE_CARD.company, r.arrangement].filter(Boolean).join(" · "))}</p></div>
+      ${row("user-round", "Team", r.team)}
+      <div><p class="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${icon("puzzle", "size-3.5 text-brass")}Must-haves</p>
+        <ul class="flex flex-wrap gap-1.5">${r.mustHaves.length ? r.mustHaves.map((m) => chip(m, false)).join("") : '<li class="rounded-full border border-dashed px-2.5 py-0.5 text-xs text-muted-foreground/70">Not added yet</li>'}</ul></div>
+      ${row("sparkles", "What growth looks like", r.growth)}
+      ${row("heart", "Why it matters", r.purpose)}
+    </article>`;
+  }
+  function roleScreen() {
+    const r = state.role, list = roleChecklist(r), ready = list.every((c) => c.done);
+    const err = (bad) => state.roleErrors && bad;
+    const g = chipGroups().mustHaves;
+    return `<div>
+      ${pageHeading({ eyebrow: "Step 2 · Define the role", title: "Who are you hoping to meet?", description: "Culminate matches on the role first, together with what you shared on Uncommon Operator. Your candidate sees this before your conversation." })}
+      <div class="grid grid-cols-[360px_minmax(0,1fr)] items-start gap-10">
+        <div class="sticky top-6 flex flex-col gap-4">${roleCard(r)}${checklistBox(list)}</div>
+        <form id="role-form" class="flex flex-col gap-8 rounded-2xl border bg-card p-8" novalidate>
+          ${section("The role", `
+            <div class="grid grid-cols-2 gap-4">
+              ${field("Role title", "r-title", `<input id="r-title" data-role-field="title" class="${cx(INPUT, err(!r.title.trim()) && INVALID)}" value="${esc(r.title)}" placeholder="e.g. Director of Operations">`)}
+              ${field("Team", "r-team", `<input id="r-team" data-role-field="team" class="${cx(INPUT, err(!r.team.trim()) && INVALID)}" value="${esc(r.team)}" placeholder="e.g. Operations · 12 people">`)}
+            </div>
+            <fieldset class="${cx(err(!r.arrangement) && "rounded-lg outline-2 outline-offset-4 outline-red-500")}"><legend class="mb-2 text-sm font-medium">How you’ll work together</legend>
+              <div class="flex flex-wrap gap-2">${ARRANGEMENTS.map((o) => { const on = r.arrangement === o; return `<button type="button" data-action="arrangement" data-value="${o}" aria-pressed="${on}" class="${cx("flex items-center gap-1 rounded-full border px-3 py-1 text-sm transition-colors", on ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:border-foreground/30 hover:bg-secondary")}">${on ? icon("check", "size-3.5") : ""}${o}</button>`; }).join("")}</div></fieldset>`, "briefcase-business")}
+          ${section("What they need to bring", chipPicker({ key: "mustHaves", ...g, invalid: err(g.invalid) }), "puzzle")}
+          ${section("Growth and purpose", `
+            ${field("What does growth look like in this role?", "r-growth", `<textarea id="r-growth" data-role-field="growth" rows="2" maxlength="200" class="${cx(INPUT, "resize-none", err(!r.growth.trim()) && INVALID)}" placeholder="e.g. Run a second site within 18 months.">${esc(r.growth)}</textarea>`)}
+            ${field("Why does this role matter?", "r-purpose", `<textarea id="r-purpose" data-role-field="purpose" rows="2" maxlength="200" class="${cx(INPUT, "resize-none", err(!r.purpose.trim()) && INVALID)}" placeholder="e.g. Keep us calm and written-first while we scale.">${esc(r.purpose)}</textarea>`)}`, "sparkles")}
+          <div class="flex items-center justify-between border-t pt-6">
+            <p class="text-sm text-muted-foreground">${ready ? "Your role is ready." : "Complete every section to see your match."}</p>
+            <div class="flex items-center gap-3">
+              ${button({ variant: "outline", className: "h-11 gap-2 rounded-full", attrs: 'data-action="role-sample"', content: icon("sparkles", "size-4") + "Fill with sample" })}
+              <button type="submit" data-slot="button" class="${merge(cx(BTN_BASE, BTN_VARIANT.default, BTN_SIZE.lg, "csg-cta h-11 gap-2 rounded-full px-5"))}">See my match${icon("arrow-right", "size-4")}</button>
+            </div>
+          </div>
+        </form>
+      </div></div>`;
+  }
+
+  // Step 3: CSG has chosen one candidate by hand. Flip to see them, then request the introduction (or pass).
+  function matchScreen() {
+    if (state.passed.done) return passedScreen();
+    const c = connection(state.card, MATCH), cand = firstName(MATCH.name), flipped = state.flipped || state.intro.requested;
+    const front = `<button type="button" data-action="flip" class="flip-front flex w-full flex-col items-center justify-center gap-5 rounded-2xl border-2 border-dashed border-brass/60 bg-card p-8 text-center shadow-sm" aria-label="Flip this card to see your candidate">
+        <span class="flex size-16 items-center justify-center rounded-full bg-accent">${icon("user-round", "size-7 text-accent-foreground")}</span>
+        <div><p class="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Your candidate</p>
+          <p class="mt-2 font-serif text-2xl leading-tight text-balance">Flip this card to see your candidate!</p></div>
         <p class="text-sm text-muted-foreground">Chosen by hand by Culminate Strategy Group</p>
         <span class="flip-hint flex items-center gap-1.5 text-xs font-medium text-primary">${icon("rotate-cw", "size-3.5")}Click to flip</span>
       </button>`;
-    const back = `<div class="flip-back">${profileCard(MATCH, { label: "Your match" })}</div>`;
+    const back = `<div class="flip-back">${profileCard(MATCH, { label: "Your candidate", highlight: c.highlight })}</div>`;
+    const actions = state.intro.requested
+      ? `<div class="k-li-banner" role="status">${icon("circle-check", "size-5")}<div class="text-left"><p class="font-medium">${esc(cand)} accepted your introduction</p><p class="text-sm text-muted-foreground">Next, ${esc(cand)} talks with Dr. Marcus Hale. You’ll get the Mindset brief ${esc(cand)} approves.</p></div></div>
+         ${button({ size: "lg", className: "csg-cta mt-4 h-11 w-full gap-2 rounded-full", attrs: 'data-action="goto" data-step="brief"', content: `Read ${esc(cand)}’s Mindset brief` + icon("arrow-right", "size-4") })}`
+      : `${button({ size: "lg", className: "csg-cta h-11 w-full gap-2 rounded-full", attrs: 'data-action="modal" data-modal="request"', content: icon("send", "size-4") + `Request an introduction` })}
+         <button type="button" data-action="modal" data-modal="pass" class="mt-3 w-full text-center text-sm text-muted-foreground underline decoration-dotted underline-offset-4 hover:text-foreground">Not the right fit? Pass</button>`;
+    const trust = (ic, title, text) => `<div class="rounded-xl border bg-card/70 p-4">${iconTile(ic)}<p class="mt-3 font-medium">${title}</p><p class="mt-1 text-sm text-muted-foreground">${text}</p></div>`;
     return `<div>
-      ${pageHeading({ eyebrow: "Step 2 · Your match is ready", title: "Your card is complete.", description: "Culminate Strategy Group already chose the one hiring manager you should meet — by hand, before you were invited. This isn’t a marketplace — you get one introduction." })}
+      ${pageHeading({ eyebrow: "Step 3 · Your match", title: flipped ? `Meet <em class="text-primary">${esc(MATCH.name)}</em>.` : "Your candidate is ready.", description: flipped ? `${esc(cand)} runs operations at ${esc(MATCH.company)}. Highlighted traits are the ones you share.` : "Culminate chose one person for you by hand, based on your episode, your card and the role. There’s no list to scroll through." })}
       ${threeColumns(
-        profileCard(state.applicant, { label: "You" }),
-        `<div class="flex h-full flex-col items-center pt-32 text-center">
-          <div class="flex w-full items-center" aria-hidden="true">
-            <span class="size-2 rounded-full bg-brass"></span><span class="h-px flex-1 bg-gradient-to-r from-brass to-transparent"></span><span class="h-px flex-1 bg-gradient-to-l from-brass to-transparent"></span><span class="size-2 rounded-full bg-brass"></span>
-          </div>
-          <p id="flip-status" role="status" aria-live="polite" class="mt-6 max-w-xs text-sm text-muted-foreground">${state.flipped ? `Meet ${esc(first)}. Next, see everything you two share.` : "Your match is waiting on the other side of the card."}</p>
-          ${state.flipped ? button({ size: "lg", className: "csg-cta mt-8 h-11 gap-2 rounded-full px-5", attrs: 'data-action="goto" data-step="match"', content: "See what you share" + icon("arrow-right", "size-4") }) : ""}
-        </div>`,
-        `<div class="${cx("flip-card", state.flipped && "is-flipped")}"><div class="flip-inner">${front}${back}</div></div>`
-      )}</div>`;
+        profileCard(state.card, { label: "You", highlight: flipped ? c.highlight : null }),
+        flipped
+          ? safe("connection panel", () => connectionPanel(c, actions))
+          : `<div class="flex h-full flex-col items-center pt-32 text-center">
+              <div class="flex w-full items-center" aria-hidden="true"><span class="size-2 rounded-full bg-brass"></span><span class="h-px flex-1 bg-gradient-to-r from-brass to-transparent"></span><span class="h-px flex-1 bg-gradient-to-l from-brass to-transparent"></span><span class="size-2 rounded-full bg-brass"></span></div>
+              <p class="mt-6 max-w-xs text-sm text-muted-foreground">Your candidate is waiting on the other side of the card.</p></div>`,
+        `<div class="${cx("flip-card", flipped && "is-flipped")}"><div class="flip-inner">${front}${back}</div></div>`
+      )}
+      ${flipped ? `<div class="mt-10"><p class="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">${icon("shield-check", "size-4")}How we found ${esc(cand)}</p>
+        <div class="grid grid-cols-3 gap-4">
+          ${trust("shield-check", "Through LinkedIn’s official API", `Culminate found ${esc(cand)}’s public professional profile within LinkedIn’s terms. No scraping, no bought lists.`)}
+          ${trust("circle-check", `${esc(cand)} chose to be here`, `${esc(cand)} accepted a private invitation and built this card. Nobody is introduced without agreeing to it.`)}
+          ${trust("brain", "A psychologist meets them first", `Before you meet, ${esc(cand)} talks with Dr. Marcus Hale and approves a short Mindset brief for you.`)}
+        </div></div>` : ""}
+    </div>`;
   }
-
-  function matchScreen() {
-    const c = connection(state.applicant, MATCH), first = firstName(MATCH.name);
-    return `<div>
-      ${pageHeading({ eyebrow: "Step 3 · Your match", title: `Meet <em class="text-primary">${esc(MATCH.name)}</em>.`, description: `${first} runs operations at ${MATCH.company}. Highlighted traits are the ones you share.` })}
-      ${threeColumns(
-        profileCard(state.applicant, { label: "You", highlight: c.highlight }),
-        connectionPanel(c, button({ size: "lg", className: "h-11 w-full gap-2 rounded-full", attrs: 'data-action="goto" data-step="episode"', content: `Listen to ${esc(first)}'s introduction` + icon("arrow-right", "size-4") })),
-        profileCard(MATCH, {
-          label: "Your match", highlight: c.highlight, className: anim("animate-in fade-in slide-in-from-right-8 duration-700"),
-          footer: `<div class="flex items-center gap-3 border-t bg-secondary/50 px-5 py-3">${icon("headphones", "size-4 text-primary")}
-            <p class="flex-1 text-xs leading-snug"><span class="font-medium">${PODCAST}</span> episode attached</p>
-            <span class="flex items-center gap-1 text-[11px] text-muted-foreground">${icon("lock", "size-3")}Unlocks next</span></div>`,
-        })
-      )}</div>`;
-  }
-
-  function currentChapter(t) { return [...CHAPTERS].reverse().find((c) => t >= c.start) || CHAPTERS[0]; }
-  const scrubBg = (pct) => `linear-gradient(to right, var(--brass) ${pct}%, color-mix(in oklch, var(--primary-foreground) 20%, transparent) ${pct}%)`;
-  function podcastPlayer() {
-    const p = state.player, pct = (p.time / EPISODE_LENGTH) * 100, ch = currentChapter(p.time);
-    return `<section id="player" aria-label="${PODCAST} podcast player" class="border-t bg-primary text-primary-foreground">
-      <div class="flex gap-3 p-4">
-        <img src="images/podcast-cover.jpg" alt="" class="size-16 shrink-0 rounded-md object-cover" data-fallback="UO">
-        <div class="min-w-0"><p class="text-[11px] uppercase tracking-[0.14em] text-primary-foreground/70">${PODCAST} · Ep. 47</p>
-          <p class="font-serif text-lg leading-snug text-pretty">Elena Vasquez on building calm companies in chaotic markets</p></div>
-      </div>
-      <div class="px-4">
-        <label for="episode-scrubber" class="sr-only">Seek episode</label>
-        <input id="episode-scrubber" type="range" min="0" max="${EPISODE_LENGTH}" step="1" value="${p.time}" aria-valuetext="${fmt(p.time)} of ${fmt(EPISODE_LENGTH)}" class="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-primary-foreground/20 accent-brass" style="background:${scrubBg(pct)}">
-        <div class="mt-1 flex justify-between text-[11px] tabular-nums text-primary-foreground/70">
-          <span id="ep-cur">${fmt(p.time)}</span><span id="ep-chapter" class="truncate px-2">${esc(ch.label)}</span><span id="ep-rem">-${fmt(EPISODE_LENGTH - p.time)}</span>
-        </div>
-      </div>
-      <div class="flex items-center justify-between px-4 py-3">
-        <button type="button" data-action="speed" class="w-12 rounded-md border border-primary-foreground/25 py-1 text-xs tabular-nums hover:bg-primary-foreground/10" aria-label="Playback speed ${p.speed}x">${p.speed}x</button>
-        <div class="flex items-center gap-3">
-          <button type="button" data-action="seek-rel" data-delta="-15" class="rounded-full p-2 hover:bg-primary-foreground/10">${icon("rotate-ccw", "size-5")}<span class="sr-only">Back 15 seconds</span></button>
-          <button type="button" data-action="play" class="flex size-12 items-center justify-center rounded-full bg-brass text-foreground transition-transform hover:scale-105">${p.playing ? icon("pause", "size-5 fill-current") : icon("play", "ml-0.5 size-5 fill-current")}<span class="sr-only">${p.playing ? "Pause" : "Play"}</span></button>
-          <button type="button" data-action="seek-rel" data-delta="30" class="rounded-full p-2 hover:bg-primary-foreground/10">${icon("rotate-cw", "size-5")}<span class="sr-only">Forward 30 seconds</span></button>
-        </div>
-        <span class="w-12 text-right text-[11px] tabular-nums text-primary-foreground/70">${fmt(EPISODE_LENGTH)}</span>
-      </div>
-      <details id="chapters" class="group border-t border-primary-foreground/15"${p.chaptersOpen ? " open" : ""}>
-        <summary class="flex cursor-pointer list-none items-center justify-between px-4 py-2.5 text-xs text-primary-foreground/80 hover:text-primary-foreground">Chapters${icon("chevron-down", "size-4 transition-transform group-open:rotate-180")}</summary>
-        <ol class="px-2 pb-2">${CHAPTERS.map((c) => `<li><button type="button" data-action="chapter" data-start="${c.start}" class="${cx("flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs hover:bg-primary-foreground/10", c === ch && "bg-primary-foreground/10 text-brass")}"><span>${esc(c.label)}</span><span class="tabular-nums text-primary-foreground/60">${fmt(c.start)}</span></button></li>`).join("")}</ol>
-      </details>
-      <div class="flex items-center justify-between border-t border-primary-foreground/15 px-4 py-2.5 text-xs">${
-        state.episodeListened ? `<span class="flex items-center gap-1.5 text-brass">${icon("check", "size-3.5")}Episode listened</span>`
-          : `<span id="ep-pct" class="text-primary-foreground/70">${Math.round(pct)}% listened</span><button type="button" data-action="listened" class="underline underline-offset-2 hover:text-brass">I've listened</button>`
-      }</div>
+  function passedScreen() {
+    return `<section class="mx-auto flex max-w-xl flex-col items-center py-16 text-center">
+      ${iconTile("circle-check", "size-16")}
+      <p class="mt-6 mb-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">Match passed</p>
+      <h1 class="font-serif text-5xl leading-[1.05] text-balance">Thanks for being honest.</h1>
+      <p class="mt-4 text-base leading-relaxed text-muted-foreground text-pretty">Culminate will use what you shared${state.passed.reason ? ` (${esc(state.passed.reason.toLowerCase())})` : ""} to choose who to introduce next. ${esc(firstName(MATCH.name))} won’t see your reason. We’ll be in touch when your next candidate is ready.</p>
+      <div class="mt-8">${button({ variant: "outline", className: "h-11 gap-2 rounded-full px-5", attrs: 'data-action="pass-undo"', content: icon("rotate-ccw", "size-4") + "Changed your mind? Undo" })}</div>
     </section>`;
   }
-  // Update the player in place on each tick, so dragging the scrubber isn't interrupted.
-  function updatePlayerDom() {
-    const p = state.player, pct = (p.time / EPISODE_LENGTH) * 100, ch = currentChapter(p.time);
-    const $ = (id) => document.getElementById(id);
-    const scrub = $("episode-scrubber");
-    if (!scrub) return;
-    scrub.value = p.time;
-    scrub.style.background = scrubBg(pct);
-    scrub.setAttribute("aria-valuetext", `${fmt(p.time)} of ${fmt(EPISODE_LENGTH)}`);
-    $("ep-cur").textContent = fmt(p.time);
-    $("ep-chapter").textContent = ch.label;
-    $("ep-rem").textContent = "-" + fmt(EPISODE_LENGTH - p.time);
-    if ($("ep-pct")) $("ep-pct").textContent = Math.round(pct) + "% listened";
-    document.querySelectorAll('[data-action="chapter"]').forEach((b) => {
-      const on = Number(b.dataset.start) === ch.start;
-      b.classList.toggle("bg-primary-foreground/10", on);
-      b.classList.toggle("text-brass", on);
-    });
+
+  // Step 4: the candidate's progress and the Mindset brief they approved
+  function advocateCard() {
+    const row = (ok, text) => `<li class="flex items-start gap-2">${icon(ok ? "check" : "x", cx("mt-0.5 size-3.5 shrink-0", ok ? "text-primary" : "text-brass"))}${esc(text)}</li>`;
+    return `<div class="rounded-xl border bg-card p-4">
+      <p class="mb-3 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${icon("shield-check", "size-3.5 text-brass")}Who wrote the brief</p>
+      <div class="flex items-center gap-3">${avatar(PSYCH, "size-12 rounded-full")}<div><p class="font-serif text-lg leading-tight">${esc(PSYCH.name)}</p><p class="text-xs text-muted-foreground">${esc(PSYCH.credentials)}</p></div></div>
+      <p class="mt-3 text-xs font-medium">He does</p>
+      <ul class="mt-1 flex flex-col gap-1 text-sm">${row(true, `Meet ${firstName(MATCH.name)} before you do`)}${row(true, "Share only what the candidate approved")}${row(true, "Open your call, then step back")}</ul>
+      <p class="mt-3 text-xs font-medium">He doesn’t</p>
+      <ul class="mt-1 flex flex-col gap-1 text-sm">${row(false, "Score or rank candidates")}${row(false, "Make the decision for you")}</ul>
+    </div>`;
   }
-  function seek(t) {
-    state.player.time = Math.max(0, Math.min(EPISODE_LENGTH, t));
-    afterTimeChange();
+  function briefPoints() {
+    const a = MATCH, c = connection(state.card, MATCH), who = firstName(a.name);
+    const lower = (arr) => arr.map((x) => x.toLowerCase());
+    const join = (arr) => (arr.length <= 1 ? arr.join("") : arr.slice(0, -1).join(", ") + " and " + arr[arr.length - 1]);
+    const sharedList = [...c.values, ...c.workingStyle];
+    return [
+      { ic: "compass", title: `How ${who} works`, text: `Does their best work with ${join(lower(a.workingStyle))}. Comes across as ${join(lower(a.personality))}.` },
+      { ic: "lightbulb", title: "What drives them", text: `“${a.mindset}” — ${who} came back to this idea several times in our conversation.` },
+      { ic: "headphones", title: "What stayed with them from your episode", text: "Your point about calm being a competitive advantage. They asked how you keep decisions written down as the company grows." },
+      { ic: "handshake", title: "Where you two will click", text: sharedList.length ? `You both care about ${join(lower(sharedList))}. Expect a conversation that gets specific fast.` : "Different strengths that complement each other well." },
+    ];
   }
-  function afterTimeChange() {
-    const p = state.player;
-    let structural = false;
-    if (p.time >= EPISODE_LENGTH && p.playing) { p.playing = false; structural = true; }
-    if (!state.episodeListened && p.time >= EPISODE_LENGTH * 0.9) { state.episodeListened = true; structural = true; }
-    structural ? render() : updatePlayerDom();
-  }
-  function episodeScreen() {
-    const c = connection(state.applicant, MATCH), first = firstName(MATCH.name);
+  function briefScreen() {
+    const cand = firstName(MATCH.name);
+    const steps = [`Accepted the invitation`, "Built their card", `Listened to your ${PODCAST} episode`, `Talked with ${PSYCH.name}`, "Approved this Mindset brief"];
     return `<div>
-      ${pageHeading({ eyebrow: "Step 4 · The introduction", title: esc(`Hear ${first} in her own words.`), description: `Instead of a job description, you get an hour of ${first} on ${PODCAST}. You haven’t heard this one before — that’s the point.` })}
+      ${pageHeading({ eyebrow: "Step 4 · Before you meet", title: `Read ${esc(cand)}’s Mindset brief.`, description: `${cand} talked with Dr. Marcus Hale and approved this brief for you. It’s the only thing Marcus shares from that conversation.` })}
+      <div class="grid grid-cols-[280px_minmax(0,1fr)] items-start gap-8">
+        <aside aria-label="Who's here" class="flex flex-col gap-3">
+          ${profileCard(MATCH, { label: "Your candidate", variant: "compact" })}
+          ${profileCard(state.card, { label: "You", variant: "compact" })}
+          <div class="mt-2 rounded-xl border bg-card/70 p-4">
+            <p class="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${icon("list-checks", "size-3.5 text-brass")}${esc(cand)} so far</p>
+            <ol class="flex flex-col gap-2 text-sm">${steps.map((s) => `<li class="flex items-start gap-2">${icon("check", "mt-0.5 size-3.5 shrink-0 text-primary")}${esc(s)}</li>`).join("")}</ol>
+          </div>
+          ${advocateCard()}
+        </aside>
+        ${safe("Mindset brief", () => `<section aria-label="${esc(cand)}’s Mindset brief" class="rounded-2xl border bg-card p-8">
+          <p class="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">${icon("circle-check", "size-4")}Approved by ${esc(cand)}</p>
+          <h2 class="font-serif text-3xl leading-tight">${esc(cand)}’s Mindset brief</h2>
+          <p class="mt-2 max-w-2xl text-base leading-relaxed text-muted-foreground">Written by Marcus from his conversation with ${esc(cand)}, and read and approved by ${esc(cand)} before it reached you.</p>
+          <div class="mt-6 rounded-xl border-l-4 border-brass bg-secondary/50 p-6">
+            <div class="mb-4 flex items-center justify-between text-xs text-muted-foreground"><span class="font-medium uppercase tracking-[0.14em]">Mindset brief · ${esc(MATCH.name)}</span><span>Prepared by ${esc(PSYCH.name)}</span></div>
+            <ul class="flex flex-col gap-4">${briefPoints().map((p) => `<li class="flex gap-4">${iconTile(p.ic)}<div><p class="font-medium">${esc(p.title)}</p><p class="mt-0.5 text-sm leading-relaxed text-muted-foreground">${esc(p.text)}</p></div></li>`).join("")}</ul>
+          </div>
+          ${state.intro.note ? `<p class="mt-4 text-sm text-muted-foreground"><span class="font-medium text-foreground">Your note to ${esc(cand)}:</span> “${esc(state.intro.note)}”</p>` : ""}
+          <div class="mt-6 flex items-center justify-between border-t pt-6">
+            <p class="text-sm text-muted-foreground">Next, pick a time for your conversation.</p>
+            ${button({ size: "lg", className: "csg-cta h-11 gap-2 rounded-full px-5", attrs: 'data-action="brief-read"', content: `Book time with ${esc(cand)}` + icon("arrow-right", "size-4") })}
+          </div>
+        </section>`)}
+      </div></div>`;
+  }
+
+  // Step 5: book the interview, then hold it (Marcus opens the call, then steps back)
+  function interviewScreen() {
+    const cfg = INTERVIEW, kind = "interview", b = state.booking[kind], hl = connection(state.card, MATCH).highlight;
+    return `<div>
+      <div class="flex items-end justify-between">${pageHeading({ eyebrow: cfg.eyebrow, title: esc(cfg.title), description: cfg.description })}${goBetween(state.call.joined, "mb-8")}</div>
+      <div class="grid grid-cols-[280px_minmax(0,1fr)] items-start gap-8">
+        <aside aria-label="Who's here" class="flex flex-col gap-3">
+          ${profileCard(state.card, { label: "You", variant: "compact" })}
+          ${profileCard(MATCH, { label: "Your candidate", variant: "compact" })}
+          <div class="mt-2 rounded-xl border bg-card/70 p-4">
+            <p class="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${icon("list-checks", "size-3.5 text-brass")}What you'll cover</p>
+            <ol class="flex flex-col gap-2 text-sm">${cfg.agenda.map((x, i) => `<li class="flex gap-2"><span class="font-serif text-brass">${i + 1}.</span>${esc(x)}</li>`).join("")}</ol>
+          </div>
+          <p class="flex items-center gap-1.5 px-1 text-xs text-muted-foreground">${icon("sparkles", "size-3.5 text-brass")}${hl.size} shared traits on your cards</p>
+          <p class="flex items-center gap-1.5 px-1 text-xs text-muted-foreground">${icon("circle-check", "size-3.5 text-primary")}You’ve read ${esc(firstName(MATCH.name))}’s Mindset brief</p>
+        </aside>
+        ${state.call.joined ? safe("video call", () => videoCall(cfg)) : !b.confirmed ? safe("booking calendar", () => bookingCalendar(kind, cfg)) : `<section aria-label="Join the call" class="flex aspect-video flex-col items-center justify-center gap-6 rounded-2xl border bg-card p-10 text-center">
+          <div class="flex items-center -space-x-4">
+            ${avatar(state.card, "size-20 rounded-full border-4 border-card")}${avatar(MATCH, "size-20 rounded-full border-4 border-card")}${avatar(PSYCH, "size-20 rounded-full border-4 border-card")}
+          </div>
+          <div>
+            <p class="flex items-center justify-center gap-2 text-sm text-muted-foreground">${icon("calendar-check", "size-4")}Booked for ${esc(prettyDay(b.date))} · ${b.time} CT</p>
+            <p class="mt-2 font-serif text-3xl">${callIsOpen(kind) ? `It’s time. ${esc(firstName(MATCH.name))} and Marcus are ready.` : `You’re booked with ${esc(MATCH.name)}.`}</p>
+            <p class="mt-2 text-sm text-muted-foreground">${callIsOpen(kind) ? "Join whenever you’re ready." : `The call opens at ${b.time} on ${esc(prettyDay(b.date))}. We’ll email a reminder the day before.`}</p>
+          </div>
+          <div class="flex items-center gap-3">
+            ${button({ size: "lg", className: cx("h-12 gap-2 rounded-full px-6 text-base", callIsOpen(kind) && "csg-cta"), attrs: `data-action="join"${callIsOpen(kind) ? "" : ' disabled title="Opens at your booked time"'}`, content: icon(callIsOpen(kind) ? "video" : "lock", "size-4") + "Join video call" })}
+            ${button({ variant: "outline", className: "h-12 gap-2 rounded-full px-5 text-base", attrs: `data-action="cal-reschedule" data-kind="${kind}"`, content: icon("calendar-check", "size-4") + "Change date" })}
+          </div>
+          ${callIsOpen(kind) ? "" : `<!-- Prototype only: jump to the booked time so nobody has to wait. Remove for the final app. -->
+          <button type="button" data-action="cal-skip" data-kind="${kind}" class="k-proto-skip">${icon("clock", "size-3.5")}Prototype only · Skip to time</button>`}
+        </section>`}
+      </div></div>`;
+  }
+
+  // Step 6: yes / no after the interview (a no asks for a reason: skills, culture or timing)
+  function decisionScreen() {
+    const d = state.decision, cand = firstName(MATCH.name);
+    const option = (value, ic, title, text) => `<button type="button" data-action="decide" data-value="${value}" aria-pressed="${d.choice === value}" class="${cx("k-choice", d.choice === value && "is-selected")}">${iconTile(ic, "size-12")}<span><span class="block font-serif text-2xl leading-tight">${title}</span><span class="mt-1 block text-sm text-muted-foreground">${text}</span></span></button>`;
+    let follow = "";
+    if (d.choice === "yes") {
+      follow = `<div class="flex flex-col gap-1.5"><label for="decision-note" class="text-sm font-medium">Anything Culminate should know about next steps? <span class="font-normal text-muted-foreground">(optional)</span></label>
+        <textarea id="decision-note" rows="3" maxlength="280" class="${INPUT} resize-none" placeholder="e.g. I'd like ${esc(cand)} to meet our plant leads next week.">${esc(d.note)}</textarea></div>`;
+    } else if (d.choice === "no") {
+      follow = `<fieldset class="${cx(state.decisionErr && "rounded-lg outline-2 outline-offset-4 outline-red-500")}"><legend class="mb-2 text-sm font-medium">What didn’t fit?</legend>
+          <div class="flex flex-wrap gap-2">${PASS_REASONS.map((r) => { const on = d.reason === r; return `<button type="button" data-action="decision-reason" data-value="${esc(r)}" aria-pressed="${on}" class="${cx("flex items-center gap-1 rounded-full border px-3 py-1 text-sm transition-colors", on ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:border-foreground/30 hover:bg-secondary")}">${on ? icon("check", "size-3.5") : ""}${esc(r)}</button>`; }).join("")}</div>
+          ${state.decisionErr ? `<p class="mt-2 text-sm" role="alert" style="color:var(--csg-coral-deep)">Pick a reason so Culminate can choose your next introduction well.</p>` : ""}</fieldset>
+        <div class="flex flex-col gap-1.5"><label for="decision-note" class="text-sm font-medium">Anything else? <span class="font-normal text-muted-foreground">(optional, only Culminate sees this)</span></label>
+          <textarea id="decision-note" rows="2" maxlength="280" class="${INPUT} resize-none">${esc(d.note)}</textarea></div>`;
+    }
+    return `<div>
+      ${pageHeading({ eyebrow: "Step 6 · Your decision", title: `Would you like to move forward with ${esc(cand)}?`, description: `Your answer goes to Culminate first. ${cand} hears from Culminate, in person and with care.` })}
+      <div class="grid grid-cols-[minmax(0,1fr)_360px] items-start gap-10">
+        <section class="flex flex-col gap-6 rounded-2xl border bg-card p-8">
+          <div class="grid grid-cols-2 gap-4">
+            ${option("yes", "circle-check", "Yes, let’s keep going", `Culminate shares next steps with you and ${cand}.`)}
+            ${option("no", "x", "No, not this time", "Culminate uses your reason to choose your next introduction.")}
+          </div>
+          ${follow}
+          <div class="flex items-center justify-between border-t pt-6">
+            <p class="text-sm text-muted-foreground">${d.choice ? "You can’t undo this once it’s sent." : "Choose yes or no to continue."}</p>
+            ${button({ size: "lg", className: "csg-cta h-11 gap-2 rounded-full px-5", attrs: `data-action="decision-send"${d.choice ? "" : " disabled"}`, content: icon("send", "size-4") + "Send my answer" })}
+          </div>
+        </section>
+        <div>${profileCard(MATCH, { label: "Your candidate", highlight: connection(state.card, MATCH).highlight })}</div>
+      </div></div>`;
+  }
+
+  function completeScreen() {
+    const c = connection(state.card, MATCH), d = state.decision, cand = firstName(MATCH.name), yes = d.choice !== "no";
+    return `<div>
+      <div class="mb-10 flex flex-col items-center text-center">
+        <p class="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">${icon("party-popper", "size-4")}Introduction complete</p>
+        <h1 class="max-w-3xl font-serif text-6xl leading-[1.05] text-balance">${yes ? `You said yes to ${esc(cand)}.` : "Thanks for your answer."}</h1>
+        <p class="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground text-pretty">${yes
+          ? `Culminate will share next steps with you and ${esc(cand)}. Whatever happens next is between the two of you — Marcus is around if you’d like a sounding board.`
+          : `Culminate will let ${esc(cand)} know, kindly and in person, and use what you shared${d.reason ? ` (${esc(d.reason.toLowerCase())})` : ""} to choose your next introduction.`}</p>
+        ${goBetween(false, "mt-6")}
+      </div>
       ${threeColumns(
-        profileCard(state.applicant, { label: "You", highlight: c.highlight }),
-        `<div class="flex h-full flex-col items-center gap-5 pt-4 text-center">
-          <span class="flex size-14 items-center justify-center rounded-full bg-accent">${icon("headphones", "size-6 text-accent-foreground")}</span>
-          <div class="max-w-xs space-y-3">
-            <p class="font-serif text-2xl leading-snug text-balance">Listen for how she thinks, not what she knows.</p>
-            <p class="text-sm leading-relaxed text-muted-foreground">About ${Math.round(EPISODE_LENGTH / 60)} minutes. No notes or prep needed — the psychologist will ask what stayed with you.</p>
-          </div>
-          ${button({ size: "lg", className: "h-11 w-full max-w-xs gap-2 rounded-full", attrs: `data-action="goto" data-step="psychologist"${state.episodeListened ? "" : " disabled"}`, content: "Continue to first interview" + icon("arrow-right", "size-4") })}
-          ${!state.episodeListened ? `<p class="-mt-2 text-xs text-muted-foreground">Unlocks after listening (${fmt(EPISODE_LENGTH)})</p>` : ""}
-          <div class="w-full max-w-md overflow-hidden rounded-2xl text-left shadow-lg">${safe("podcast player", podcastPlayer)}</div>
-          <div class="w-full max-w-md rounded-xl border bg-card/70 p-4 text-left">
-            <p class="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${icon("ear", "size-3.5 text-brass")}Listen for what you share</p>
-            <ul class="flex flex-wrap gap-1.5">${[...c.values, ...c.personality].map((i) => chip(i, true)).join("")}</ul>
-          </div>
-        </div>`,
-        profileCard(MATCH, { label: "Your match", highlight: c.highlight })
+        profileCard(state.card, { label: "You", highlight: c.highlight }),
+        connectionPanel(c, button({ variant: "outline", className: "w-full gap-2 rounded-full", attrs: 'data-action="restart"', content: icon("rotate-ccw", "size-4") + "Restart prototype" })),
+        profileCard(MATCH, { label: "Your candidate", highlight: c.highlight })
       )}</div>`;
+  }
+
+  function screen() {
+    if (!state.account.signedIn) return accountScreen();
+    switch (state.step) {
+      case "welcome": return state.optedOut ? optedOutScreen() : welcomeScreen();
+      case "build": return buildScreen();
+      case "role": return roleScreen();
+      case "match": return matchScreen();
+      case "brief": return briefScreen();
+      case "interview": return interviewScreen();
+      case "decision": return decisionScreen();
+      case "complete": return completeScreen();
+    }
   }
 
   function callControl(action, active, label, iconHtml) {
@@ -937,7 +1102,7 @@
         <div class="absolute bottom-4 left-4 rounded-lg bg-black/55 px-3 py-1.5 backdrop-blur"><p class="text-sm font-medium">${esc(cfg.remote.name)}</p><p class="text-xs text-white/70">${esc(cfg.remote.title)}</p></div>
         ${c.captions ? `<p class="absolute inset-x-0 bottom-20 mx-auto w-fit max-w-[70%] rounded-md bg-black/65 px-4 py-2 text-center text-sm leading-relaxed text-white">${esc(cfg.caption)}</p>` : ""}
         <div class="absolute right-4 top-4 h-32 w-48 overflow-hidden rounded-xl border-2 border-white/20 bg-neutral-800 shadow-lg">
-          ${c.cam ? avatar(state.applicant, "size-full text-2xl text-white") : '<div class="flex size-full items-center justify-center text-xs text-white/60">Camera off</div>'}
+          ${c.cam ? avatar(state.card, "size-full text-2xl text-white") : '<div class="flex size-full items-center justify-center text-xs text-white/60">Camera off</div>'}
           <span class="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded bg-black/55 px-1.5 py-0.5 text-[11px] text-white">${!c.mic ? icon("mic-off", "size-3") : ""}You</span>
         </div>
       </div>
@@ -949,64 +1114,11 @@
       </div>
     </section>`;
   }
-  // Step 5 sidebar: who Dr. Hale is and what he does / doesn't do
-  function advocateCard() {
-    const row = (ok, text) => `<li class="flex items-start gap-2">${icon(ok ? "check" : "x", cx("mt-0.5 size-3.5 shrink-0", ok ? "text-primary" : "text-brass"))}${esc(text)}</li>`;
-    return `<div class="rounded-xl border bg-card p-4">
-      <p class="mb-3 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${icon("shield-check", "size-3.5 text-brass")}Meet your advocate</p>
-      <div class="flex items-center gap-3">${avatar(PSYCH, "size-12 rounded-full")}<div><p class="font-serif text-lg leading-tight">${esc(PSYCH.name)}</p><p class="text-xs text-muted-foreground">${esc(PSYCH.credentials)}</p></div></div>
-      <p class="mt-3 text-xs font-medium">He will</p>
-      <ul class="mt-1 flex flex-col gap-1 text-sm">${row(true, "Help put how you think into words")}${row(true, "Introduce you to Elena, then step back")}</ul>
-      <p class="mt-3 text-xs font-medium">He won’t</p>
-      <ul class="mt-1 flex flex-col gap-1 text-sm">${row(false, "Score or grade you")}${row(false, "Decide whether you move forward")}${row(false, "Share anything without your OK")}</ul>
-    </div>`;
-  }
-  // Step 5: what each side gets from the psychologist conversation
-  function whoBenefits() {
-    const col = (title, ic, items) => `<div class="rounded-xl border bg-card/70 p-4">
-      <p class="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${icon(ic, "size-3.5 text-brass")}${title}</p>
-      <ul class="flex flex-col gap-1.5 text-sm">${items.map((i) => `<li class="flex items-start gap-2">${icon("check", "mt-0.5 size-3.5 shrink-0 text-primary")}${esc(i)}</li>`).join("")}</ul></div>`;
-    return `<div class="mt-6 grid grid-cols-2 gap-4">
-      ${col("What you get", "user-round", ["Someone in your corner before the big conversation", "Your strengths put into words by an expert", "A say in exactly what Elena hears"])}
-      ${col(`What ${firstName(MATCH.name)} gets`, "hiring-manager", ["Confidence the fit is real, not just a strong résumé", "A head start on how you like to work", "A first conversation that starts deep, not with small talk"])}
-    </div>`;
-  }
-  // Step 5, after the call: the brief Marcus will share with Elena, which the applicant approves first
-  function mindsetBrief() {
-    const a = state.applicant, c = connection(a, MATCH), b = state.brief, first = firstName(a.name || "You");
-    const lower = (arr) => arr.map((x) => x.toLowerCase());
-    const join = (arr) => (arr.length <= 1 ? arr.join("") : arr.slice(0, -1).join(", ") + " and " + arr[arr.length - 1]);
-    const shared = [...c.values, ...c.workingStyle];
-    const points = [
-      { ic: "compass", title: `How ${first} works`, text: `Does their best work with ${join(lower(a.workingStyle))}. Comes across as ${join(lower(a.personality))}.` },
-      { ic: "lightbulb", title: "What drives them", text: a.mindset ? `“${a.mindset}” — ${first} came back to this idea several times in our conversation.` : "A clear sense of why they do the work they do." },
-      { ic: "handshake", title: `Where you two will click`, text: shared.length ? `You both care about ${join(lower(shared))}. Expect a conversation that gets specific fast.` : "Different strengths that complement each other well." },
-    ];
-    return `<section aria-label="Your Mindset brief" class="${cx("rounded-2xl border bg-card p-8", anim("animate-in fade-in duration-500"))}">
-      <p class="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">${icon("eye", "size-4")}Before ${esc(firstName(MATCH.name))} sees anything</p>
-      <h2 class="font-serif text-3xl leading-tight">Your Mindset brief</h2>
-      <p class="mt-2 max-w-2xl text-base leading-relaxed text-muted-foreground">Marcus wrote this from your conversation. It’s the only thing from the call he’ll share with ${esc(firstName(MATCH.name))}. Read it, then approve it or ask for a change.</p>
-      <div class="mt-6 rounded-xl border-l-4 border-brass bg-secondary/50 p-6">
-        <div class="mb-4 flex items-center justify-between text-xs text-muted-foreground"><span class="font-medium uppercase tracking-[0.14em]">Mindset brief · ${esc(a.name)}</span><span>Prepared by ${esc(PSYCH.name)}</span></div>
-        <ul class="flex flex-col gap-4">${points.map((p) => `<li class="flex gap-4">${iconTile(p.ic)}<div><p class="font-medium">${esc(p.title)}</p><p class="mt-0.5 text-sm leading-relaxed text-muted-foreground">${esc(p.text)}</p></div></li>`).join("")}</ul>
-      </div>
-      ${b.noteSent ? `<p class="mt-4 flex items-center gap-2 text-sm text-primary">${icon("check", "size-4")}Marcus has your note and will update the brief before sharing it.</p>` : ""}
-      ${b.editing ? `<div class="mt-6 flex flex-col gap-2"><label for="brief-note" class="text-sm font-medium">What should Marcus change?</label>
-        <textarea id="brief-note" rows="3" class="${INPUT} resize-none" placeholder="e.g. I’d describe myself as more collaborative than async-first.">${esc(b.note)}</textarea>
-        <div class="flex justify-end gap-3">${button({ variant: "outline", className: "h-10 rounded-full px-4", attrs: 'data-action="brief-cancel"', content: "Cancel" })}${button({ className: "h-10 rounded-full px-4", attrs: 'data-action="brief-send"', content: "Send to Marcus" })}</div></div>` : ""}
-      <div class="mt-6 flex items-center justify-between border-t pt-6">
-        ${b.approved
-          ? `<p class="flex items-center gap-2 text-sm font-medium text-primary">${icon("circle-check", "size-5")}Approved and shared with ${esc(firstName(MATCH.name))}.</p>${button({ size: "lg", className: "csg-cta h-11 gap-2 rounded-full px-5", attrs: 'data-action="goto" data-step="hiring-manager"', content: `Continue to meet ${esc(firstName(MATCH.name))}` + icon("arrow-right", "size-4") })}`
-          : `${b.editing ? "<span></span>" : `<button type="button" data-action="brief-edit" class="text-sm text-muted-foreground underline decoration-dotted underline-offset-4 hover:text-foreground">Suggest a change</button>`}${button({ size: "lg", className: "csg-cta h-11 gap-2 rounded-full px-5", attrs: 'data-action="brief-approve"', content: icon("check", "size-4") + (b.noteSent ? "Approve with my note" : `Approve & share with ${esc(firstName(MATCH.name))}`) })}`}
-      </div>
-    </section>`;
-  }
-
-  /* ---------- Booking calendar (steps 5 & 6) ---------- */
+  /* ---------- Booking calendar (step 5) ---------- */
   // Prototype availability: weekdays from tomorrow for 5 weeks, with a few days and times taken.
   // A real build would read the psychologist's and hiring manager's calendars.
   const SLOT_TIMES = ["9:00 AM", "10:30 AM", "12:00 PM", "1:00 PM", "2:00 PM", "3:30 PM", "4:30 PM"];
-  const LENGTH = { psychologist: "30 minutes", "hiring-manager": "45 minutes" };
+  const LENGTH = { interview: "45 minutes" };
   const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const fromYmd = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
   const prettyDay = (s) => fromYmd(s).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
@@ -1014,9 +1126,6 @@
   function bookingWindow(kind) {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     let start = new Date(today); start.setDate(start.getDate() + 1);
-    // The hiring manager interview has to come after the psychologist conversation
-    const psych = state.booking.psychologist;
-    if (kind === "hiring-manager" && psych.confirmed && psych.date) { const p = fromYmd(psych.date); p.setDate(p.getDate() + 1); if (p > start) start = p; }
     const end = new Date(start); end.setDate(end.getDate() + 35);
     return { start, end };
   }
@@ -1060,10 +1169,10 @@
     }
     const times = b.date ? slotsFor(kind, b.date) : [];
     const who = cfg.remote.name;
-    return `<section aria-label="Book your ${kind === "psychologist" ? "psychologist" : "hiring manager"} interview" class="${cx("rounded-2xl border bg-card p-8", anim("animate-in fade-in duration-500"))}">
+    return `<section aria-label="Book your interview" class="${cx("rounded-2xl border bg-card p-8", anim("animate-in fade-in duration-500"))}">
       <p class="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">${icon("calendar-check", "size-4")}Book your time</p>
       <h2 class="font-serif text-3xl leading-tight">When works for you?</h2>
-      <p class="mt-2 text-base text-muted-foreground">Pick a day and time to meet ${esc(who)}. ${LENGTH[kind]}, by video in Katalyzr.${kind === "hiring-manager" && state.booking.psychologist.confirmed ? ` Days open after your conversation with Marcus on ${esc(shortDay(state.booking.psychologist.date))}.` : ""}</p>
+      <p class="mt-2 text-base text-muted-foreground">Pick a day and time to meet ${esc(who)}. ${LENGTH[kind]}, by video in Katalyzr. Marcus will join to open the call.</p>
       <div class="k-cal mt-6">
         <div>
           <div class="k-cal-head">
@@ -1086,73 +1195,6 @@
         ${button({ size: "lg", className: "csg-cta h-11 gap-2 rounded-full px-5", attrs: `data-action="cal-confirm" data-kind="${kind}"${b.date && b.time ? "" : " disabled"}`, content: icon("check", "size-4") + (b.date && b.time ? `Book ${esc(shortDay(b.date))} at ${b.time}` : "Pick a day and time") })}
       </div>
     </section>`;
-  }
-
-  function interviewScreen(kind) {
-    const cfg = INTERVIEWS[kind], a = state.applicant, hl = connection(a, MATCH).highlight;
-    return `<div>
-      <div class="flex items-end justify-between">${pageHeading({ eyebrow: cfg.eyebrow, title: esc(cfg.title), description: cfg.description })}${goBetween(state.call.joined, "mb-8")}</div>
-      ${kind === "psychologist" ? `<button type="button" data-action="modal" data-modal="why-psych" class="-mt-4 mb-8 inline-flex items-center gap-2 text-sm font-medium text-primary underline decoration-primary/40 underline-offset-4 hover:decoration-primary">${icon("circle-help", "size-4")}Why talk to a psychologist first?</button>` : ""}
-      <div class="grid grid-cols-[280px_minmax(0,1fr)] items-start gap-8">
-        <aside aria-label="Who's here" class="flex flex-col gap-3">
-          ${profileCard(a, { label: "You", variant: "compact" })}
-          ${profileCard(MATCH, { label: "Your match", variant: "compact" })}
-          <div class="mt-2 rounded-xl border bg-card/70 p-4">
-            <p class="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${icon("list-checks", "size-3.5 text-brass")}What you'll cover</p>
-            <ol class="flex flex-col gap-2 text-sm">${cfg.agenda.map((x, i) => `<li class="flex gap-2"><span class="font-serif text-brass">${i + 1}.</span>${esc(x)}</li>`).join("")}</ol>
-          </div>
-          <p class="flex items-center gap-1.5 px-1 text-xs text-muted-foreground">${icon("sparkles", "size-3.5 text-brass")}${hl.size} shared traits on your cards</p>
-          ${kind === "psychologist" ? advocateCard() : ""}
-          ${kind === "hiring-manager" && state.brief.approved ? `<p class="flex items-center gap-1.5 px-1 text-xs text-muted-foreground">${icon("circle-check", "size-3.5 text-primary")}${esc(firstName(MATCH.name))} has read your approved Mindset brief</p>` : ""}
-        </aside>
-        ${kind === "psychologist" && state.call.ended ? safe("Mindset brief", mindsetBrief) : state.call.joined ? safe("video call", () => videoCall(cfg)) : !state.booking[kind].confirmed ? `<div>${safe("booking calendar", () => bookingCalendar(kind, cfg))}${kind === "psychologist" ? whoBenefits() : ""}</div>` : `<div><section aria-label="Join the call" class="flex aspect-video flex-col items-center justify-center gap-6 rounded-2xl border bg-card p-10 text-center">
-          <div class="flex items-center -space-x-4">
-            ${avatar(a, "size-20 rounded-full border-4 border-card")}${avatar(cfg.remote, "size-20 rounded-full border-4 border-card")}${kind === "hiring-manager" ? avatar(PSYCH, "size-20 rounded-full border-4 border-card") : ""}
-          </div>
-          <div>
-            <p class="flex items-center justify-center gap-2 text-sm text-muted-foreground">${icon("calendar-check", "size-4")}Booked for ${esc(prettyDay(state.booking[kind].date))} · ${state.booking[kind].time} CT</p>
-            <p class="mt-2 font-serif text-3xl">${callIsOpen(kind) ? `It’s time. ${esc(cfg.remote.name)} is ready when you are.` : `You’re booked with ${esc(cfg.remote.name)}.`}</p>
-            <p class="mt-2 text-sm text-muted-foreground">${callIsOpen(kind) ? "Join whenever you’re ready." : `The call opens at ${state.booking[kind].time} on ${esc(prettyDay(state.booking[kind].date))}. We’ll email a reminder the day before.`}</p>
-          </div>
-          <div class="flex items-center gap-3">
-            ${button({ size: "lg", className: cx("h-12 gap-2 rounded-full px-6 text-base", callIsOpen(kind) && "csg-cta"), attrs: `data-action="join"${callIsOpen(kind) ? "" : ' disabled title="Opens at your booked time"'}`, content: icon(callIsOpen(kind) ? "video" : "lock", "size-4") + "Join video call" })}
-            ${button({ variant: "outline", className: "h-12 gap-2 rounded-full px-5 text-base", attrs: `data-action="cal-reschedule" data-kind="${kind}"`, content: icon("calendar-check", "size-4") + "Change date" })}
-          </div>
-          ${callIsOpen(kind) ? "" : `<!-- Prototype only: jump to the booked time so nobody has to wait. Remove for the final app. -->
-          <button type="button" data-action="cal-skip" data-kind="${kind}" class="k-proto-skip">${icon("clock", "size-3.5")}Prototype only · Skip to time</button>`}
-        </section>${kind === "psychologist" ? whoBenefits() : ""}</div>`}
-      </div></div>`;
-  }
-
-  function completeScreen() {
-    const c = connection(state.applicant, MATCH);
-    return `<div>
-      <div class="mb-10 flex flex-col items-center text-center">
-        <p class="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">${icon("party-popper", "size-4")}Introduction complete</p>
-        <h1 class="max-w-3xl font-serif text-6xl leading-[1.05] text-balance">That's it. You've been introduced.</h1>
-        <p class="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground text-pretty">${esc(firstName(MATCH.name))} and you now have each other's details. Whatever happens next is between the two of you — Marcus is around if you'd like a sounding board.</p>
-        ${goBetween(false, "mt-6")}
-        <a href="${HOME_URL}" data-slot="button" class="${merge(cx(BTN_BASE, BTN_VARIANT.default, BTN_SIZE.lg, "csg-cta mt-8 h-12 gap-2 rounded-full px-6 text-base"))}">${icon("house", "size-4")}Take me home${icon("arrow-right", "size-4")}</a>
-      </div>
-      ${threeColumns(
-        profileCard(state.applicant, { label: "You", highlight: c.highlight }),
-        connectionPanel(c, button({ variant: "outline", className: "w-full gap-2 rounded-full", attrs: 'data-action="restart"', content: icon("rotate-ccw", "size-4") + "Restart prototype" })),
-        profileCard(MATCH, { label: "Your match", highlight: c.highlight })
-      )}</div>`;
-  }
-
-  function screen() {
-    if (!state.account.signedIn) return accountScreen();
-    switch (state.step) {
-      case "welcome": return state.optedOut ? optedOutScreen() : welcomeScreen();
-      case "build": return buildScreen();
-      case "waiting": return waitingScreen();
-      case "match": return matchScreen();
-      case "episode": return episodeScreen();
-      case "psychologist": return interviewScreen("psychologist");
-      case "hiring-manager": return interviewScreen("hiring-manager");
-      case "complete": return completeScreen();
-    }
   }
 
   /* ---------- Error handling ---------- */
@@ -1236,16 +1278,7 @@
     }
   }
 
-  /* ---------- Timers per step ---------- */
-  function startStepTimers() {
-    if (state.step === "episode") {
-      timers.push(setInterval(() => {
-        if (!state.player.playing) return;
-        state.player.time = Math.min(EPISODE_LENGTH, state.player.time + 0.25 * state.player.speed);
-        afterTimeChange();
-      }, 250));
-    }
-  }
+  /* ---------- Timers ---------- */
   function startCallTimer() {
     timers.push(setInterval(() => {
       state.call.seconds++;
@@ -1254,25 +1287,15 @@
     }, 1000));
   }
 
-  /* ---------- Fill from LinkedIn ---------- */
-  // Prototype: a real build would read the profile through LinkedIn's official API.
-  // Here any valid profile link fills in the sample applicant's LinkedIn details after a short wait.
-  function importFromLinkedIn() {
-    const li = state.linkedin;
-    if (li.status === "loading") return;
-    if (!/linkedin\.com\/in\/[\w%-]+/i.test(li.url.trim())) {
-      li.error = "That doesn’t look like a LinkedIn profile link. It should look like linkedin.com/in/your-name.";
-      render();
-      const el = document.getElementById("li-url"); if (el) el.focus();
-      return;
-    }
-    li.error = ""; li.status = "loading"; render();
-    setTimeout(() => {
-      const s = SAMPLE_APPLICANT;
-      updateApplicant(cleanApplicant({ ...state.applicant, photo: s.photo, name: s.name, role: s.role, experienceYears: s.experienceYears, experience: s.experience, skills: [...s.skills] }));
-      li.status = "idle"; li.imported = true; state.modal = null; state.showErrors = false;
-      render();
-    }, 1600);
+  /* ---------- Episode draft ---------- */
+  // Prototype: a real build would draft the card from the episode transcript. Here it fills Elena's details.
+  function importEpisodeDraft() {
+    const patch = {};
+    EPISODE_DRAFT.forEach((k) => { patch[k] = Array.isArray(SAMPLE_CARD[k]) ? [...SAMPLE_CARD[k]] : SAMPLE_CARD[k]; });
+    state.card = cleanCard({ ...state.card, ...patch });
+    state.draft.imported = true;
+    state.showErrors = false;
+    render();
   }
 
   /* ---------- Events ---------- */
@@ -1289,28 +1312,26 @@
     const el = e.target.closest("[data-action]");
     if (!el || el.disabled) return;
     const { action } = el.dataset;
-    const p = state.player, c = state.call;
+    const c = state.call;
     switch (action) {
       case "goto": return goTo(el.dataset.step);
       case "restart": return restart();
+      case "retry": return render();
       case "acc-show": state.account.show = !state.account.show; return render();
       case "acc-fill": state.account = { ...state.account, username: DEMO_LOGIN.username, password: DEMO_LOGIN.password, errors: {} }; return render();
-      case "retry": return render();
-      case "modal": state.modal = el.dataset.modal; state.linkedin.error = ""; render(); { const m = document.querySelector(".k-modal input[type=url]") || document.querySelector(".k-modal button, .k-modal input"); if (m) m.focus(); } return;
+      case "modal": {
+        state.modal = el.dataset.modal; state.passErr = false; render();
+        const m = document.querySelector(".k-modal textarea, .k-modal input") || document.querySelector(".k-modal button");
+        if (m) m.focus();
+        return;
+      }
       case "close-modal": state.modal = null; return render();
       case "confirm-optout": state.optedOut = true; state.modal = null; render(true); return window.scrollTo({ top: 0, behavior: "smooth" });
       case "undo-optout": state.optedOut = false; state.optOutReason = ""; return render(true);
-      case "flip": {
-        if (state.flipped) return;
-        state.flipped = true;
-        const card = el.closest(".flip-card");
-        if (card) card.classList.add("is-flipped"); // animate the flip first,
-        return setTimeout(() => { if (state.step === "waiting") render(); }, 800); // then show the next button
-      }
-      case "fill-sample": state.applicant = { ...SAMPLE_APPLICANT }; return render();
-      case "li-import": return importFromLinkedIn();
-      case "li-dismiss": state.linkedin.imported = false; return render();
-      case "sample-photo": state.photoError = ""; return updateApplicant({ photo: SAMPLE_APPLICANT.photo });
+      case "fill-sample": state.card = cleanCard(SAMPLE_CARD); state.showErrors = false; return render();
+      case "draft-import": return importEpisodeDraft();
+      case "draft-dismiss": state.draft.imported = false; return render();
+      case "sample-photo": state.photoError = ""; return updateCard({ photo: SAMPLE_CARD.photo });
       case "chip": {
         const g = chipGroups()[el.dataset.key], v = el.dataset.value;
         if (g.selected.includes(v)) g.set(g.selected.filter((s) => s !== v));
@@ -1318,11 +1339,22 @@
         return;
       }
       case "chip-add": return addChip(el.dataset.key);
-      case "play": p.playing = !p.playing; return render();
-      case "speed": { const speeds = [1, 1.25, 1.5, 2]; p.speed = speeds[(speeds.indexOf(p.speed) + 1) % speeds.length]; return render(); }
-      case "seek-rel": return seek(p.time + Number(el.dataset.delta));
-      case "chapter": p.time = Number(el.dataset.start); p.playing = true; return render();
-      case "listened": state.episodeListened = true; return render();
+      case "arrangement": return updateRole({ arrangement: state.role.arrangement === el.dataset.value ? "" : el.dataset.value });
+      case "role-sample": state.role = cleanRole(SAMPLE_ROLE); state.roleErrors = false; return render();
+      case "flip": {
+        if (state.flipped) return;
+        state.flipped = true;
+        const card = el.closest(".flip-card");
+        if (card) card.classList.add("is-flipped"); // animate the flip first,
+        return setTimeout(() => { if (state.step === "match") render(); }, 800); // then show the details
+      }
+      // Prototype: the candidate accepts the introduction straight away
+      case "request-send": state.intro.requested = true; state.modal = null; return render();
+      case "pass-confirm":
+        if (!state.passed.reason) { state.passErr = true; return render(); }
+        state.passed.done = true; state.modal = null; render(true); return window.scrollTo({ top: 0, behavior: "smooth" });
+      case "pass-undo": state.passed = { done: false, reason: "", note: "" }; return render(true);
+      case "brief-read": state.briefRead = true; return goTo("interview");
       case "join": c.joined = true; render(true); return startCallTimer();
       case "cal-month": {
         const b = state.booking[el.dataset.kind], { start } = bookingWindow(el.dataset.kind);
@@ -1335,65 +1367,73 @@
       case "cal-confirm": { const b = state.booking[el.dataset.kind]; if (b.date && b.time) { b.confirmed = true; render(true); window.scrollTo({ top: 0, behavior: "smooth" }); } return; }
       case "cal-reschedule": { const b = state.booking[el.dataset.kind]; b.confirmed = false; b.skipped = false; return render(); }
       case "cal-skip": state.booking[el.dataset.kind].skipped = true; return render();
-      case "end-call":
-        if (state.step === "psychologist") { clearTimers(); c.joined = false; c.ended = true; render(true); return window.scrollTo({ top: 0, behavior: "smooth" }); }
-        return goTo(el.dataset.next);
-      case "brief-edit": state.brief.editing = true; render(); { const t = document.getElementById("brief-note"); if (t) t.focus(); } return;
-      case "brief-cancel": state.brief.editing = false; return render();
-      case "brief-send": if (!state.brief.note.trim()) return; state.brief.editing = false; state.brief.noteSent = true; return render();
-      case "brief-approve": state.brief.approved = true; state.brief.editing = false; return render();
+      case "end-call": return goTo("decision");
       case "toggle-mic": c.mic = !c.mic; return render();
       case "toggle-cam": c.cam = !c.cam; return render();
       case "toggle-captions": c.captions = !c.captions; return render();
+      case "decide": state.decision.choice = el.dataset.value; state.decisionErr = false; return render();
+      case "decision-reason": state.decision.reason = state.decision.reason === el.dataset.value ? "" : el.dataset.value; state.decisionErr = false; return render();
+      case "decision-send": {
+        const d = state.decision;
+        if (!d.choice) return;
+        if (d.choice === "no" && !d.reason) { state.decisionErr = true; return render(); }
+        if (d.choice === "yes") d.reason = "";
+        d.sent = true;
+        return goTo("complete");
+      }
     }
   }
   root.addEventListener("input", (e) => {
     const t = e.target;
-    if (t.dataset.field) return updateApplicant({ [t.dataset.field]: t.value });
-    if (t.id === "brief-note") { state.brief.note = t.value; return; }
+    if (t.dataset.field) return updateCard({ [t.dataset.field]: t.value });
+    if (t.dataset.roleField) return updateRole({ [t.dataset.roleField]: t.value });
     if (t.dataset.acc) { state.account[t.dataset.acc] = t.value; state.account.errors = {}; return render(); }
-    if (t.id === "li-url") { state.linkedin.url = t.value; return; }
     if (t.dataset.chipInput) { state.chipDrafts[t.dataset.chipInput] = t.value; return render(); }
-    if (t.id === "episode-scrubber") return seek(Number(t.value));
+    if (t.id === "intro-note") { state.intro.note = t.value; return; }
+    if (t.id === "pass-note") { state.passed.note = t.value; return; }
+    if (t.id === "decision-note") { state.decision.note = t.value; return; }
   });
   root.addEventListener("change", (e) => {
     const t = e.target;
     if (t.id === "step-select") {
-      if (t.value === "account") { state.account = { signedIn: false, username: "", password: "", confirm: "", show: false, errors: {} }; return render(true); }
-      if (!state.account.signedIn) state.account.signedIn = true; // prototype: jumping ahead from the dropdown skips the account page
+      if (t.value === "account") { state.account = freshAccount(); return render(true); }
+      if (!state.account.signedIn) state.account.signedIn = true; // prototype: jumping ahead from the dropdown skips sign-in
       return goTo(t.value);
     }
     if (t.name === "optout-reason") { state.optOutReason = t.value; return; }
-    if (t.id === "f-photo" && t.files && t.files[0]) return readPhoto(t.files[0], (url) => updateApplicant({ photo: url }));
+    if (t.name === "pass-reason") { state.passed.reason = t.value; state.passErr = false; return; }
+    if (t.id === "f-photo" && t.files && t.files[0]) return readPhoto(t.files[0], (url) => updateCard({ photo: url }));
   });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && state.modal && state.linkedin.status !== "loading") { state.modal = null; render(); }
-    if (e.key === "Enter" && e.target.id === "li-url") { e.preventDefault(); importFromLinkedIn(); }
+    if (e.key === "Escape" && state.modal) { state.modal = null; render(); }
   });
   root.addEventListener("keydown", (e) => {
     const t = e.target;
     if (t.dataset && t.dataset.chipInput && e.key === "Enter" && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); addChip(t.dataset.chipInput); }
   });
-  root.addEventListener("toggle", (e) => { if (e.target.id === "chapters") state.player.chaptersOpen = e.target.open; }, true);
   root.addEventListener("submit", (e) => {
-    if (e.target.id === "account-form") { e.preventDefault(); return submitAccount(); }
-    if (e.target.id !== "build-form") return;
-    e.preventDefault();
-    if (checklist(state.applicant).every((c) => c.done)) goTo("waiting");
-    else { state.showErrors = true; render(); }
+    const id = e.target.id;
+    if (id === "account-form") { e.preventDefault(); return submitAccount(); }
+    if (id === "build-form") {
+      e.preventDefault();
+      if (checklist(state.card).every((x) => x.done)) goTo("role"); else { state.showErrors = true; render(); }
+    }
+    if (id === "role-form") {
+      e.preventDefault();
+      if (roleChecklist(state.role).every((x) => x.done)) goTo("match"); else { state.roleErrors = true; render(); }
+    }
   });
 
   // When the booked time arrives while someone is on the page, unlock "Join video call"
   setInterval(() => {
-    const k = state.step;
-    if ((k === "psychologist" || k === "hiring-manager") && !state.call.joined && !state.modal && state.booking[k].confirmed && !state.booking[k].skipped) {
+    const b = state.booking.interview;
+    if (state.step === "interview" && !state.call.joined && !state.modal && b.confirmed && !b.skipped) {
       const btn = document.querySelector('[data-action="join"]');
-      if (btn && btn.disabled && callIsOpen(k)) render();
+      if (btn && btn.disabled && callIsOpen("interview")) render();
     }
   }, 30000);
 
-  // Start-up: ?restart=1 (used by the homepage's "Back to the first match") starts fresh;
-  // otherwise pick up where you left off.
+  // Start-up: ?restart=1 starts fresh; otherwise pick up where you left off.
   try {
     const params = new URLSearchParams(location.search);
     if (params.get("restart") === "1") {
@@ -1402,10 +1442,10 @@
       history.replaceState(null, "", location.pathname + (params.toString() ? "?" + params : "") + location.hash);
     } else {
       loadProgress();
+      if (takeHandoff()) { /* arrived signed in from the applicant prototype's sign-in page */ }
     }
   } catch (e) { /* bad URL or storage unavailable: start fresh */ }
-  window.addEventListener("pagehide", saveProgress); // keeps podcast progress when leaving or refreshing
+  window.addEventListener("pagehide", saveProgress);
 
   render(true);
-  startStepTimers();
 })();

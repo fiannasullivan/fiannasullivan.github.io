@@ -269,7 +269,7 @@
         ${tile("settings", "settings", "Settings", "Notifications, what Katalyzr keeps, and opting out.", "Manage settings", "")}
       </div>
       <!-- Prototype only: lets Fianna jump back to the first-match flow (Prototype 3). Remove for the final app. -->
-      <a href="../prototype-3/?restart=1" class="k-proto-link">${icon("rotate-ccw")}<span><strong>Back to the first match</strong><small>Prototype only · replays the invitation-to-introduction flow</small></span>${icon("arrow-right", "k-tile-arrow")}</a>`;
+      <a href="../applicant/?restart=1" class="k-proto-link">${icon("rotate-ccw")}<span><strong>Back to the first match</strong><small>Prototype only · replays the invitation-to-introduction flow</small></span>${icon("arrow-right", "k-tile-arrow")}</a>`;
   }
 
   function matchesPage() {
