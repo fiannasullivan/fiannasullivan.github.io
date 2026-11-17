@@ -63,7 +63,7 @@
   const PERSONALITIES = ["Direct", "Warm", "Calm under pressure", "Curious", "Playful", "Restless", "Reflective"];
   const HOW_IT_WORKS = [
     { title: "Build your card", body: "Tell us how you think and work. Not a résumé.", icon: "profile-card" },
-    { title: "Meet your match", body: "One hiring manager, chosen by hand for shared mindset.", icon: "hiring-manager" },
+    { title: "Meet your match", body: "One hiring manager at a time, chosen by hand for shared mindset.", icon: "hiring-manager" },
     { title: "Two conversations", body: "First a psychologist, so you walk in already understood. Then the hiring manager. That’s it.", icon: "messages-square" },
   ];
   const firstName = (n) => String(n || "").trim().split(/\s+/)[0] || "";
@@ -835,7 +835,7 @@
       </button>`;
     const back = `<div class="flip-back">${profileCard(MATCH, { label: "Your match" })}</div>`;
     return `<div>
-      ${pageHeading({ eyebrow: "Step 2 · Your match is ready", title: "Your card is complete.", description: "Culminate Strategy Group already chose the one hiring manager you should meet — by hand, before you were invited. This isn’t a marketplace — you get one introduction." })}
+      ${pageHeading({ eyebrow: "Step 2 · Your match is ready", title: "Your card is complete.", description: "Culminate Strategy Group already chose a hiring manager for you to meet — by hand, before you were invited. This isn’t a marketplace: you get one introduction at a time." })}
       ${threeColumns(
         profileCard(state.applicant, { label: "You" }),
         `<div class="flex h-full flex-col items-center pt-32 text-center">
