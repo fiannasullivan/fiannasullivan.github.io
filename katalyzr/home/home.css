@@ -149,3 +149,14 @@
 
 /* Error handling: placeholder for images that fail to load */
 .k-img-fallback { display: flex; align-items: center; justify-content: center; padding: 0.5rem; text-align: center; font-size: 0.8rem; font-weight: 600; color: var(--muted-foreground); background: var(--csg-lavender); }
+
+/* Mindset fit (same ring as the prototype's "What you share") */
+.k-fit { display: flex; justify-content: center; }
+.k-fit-ring { position: relative; display: flex; align-items: center; justify-content: center; width: 7rem; height: 7rem; border-radius: 9999px; background: var(--background); text-align: center; }
+.k-fit-ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.k-fit-track { fill: none; stroke: var(--border); stroke-width: 4; }
+.k-fit-bar { fill: none; stroke: var(--primary); stroke-width: 4; stroke-linecap: round; }
+.k-fit-num { font-family: var(--font-instrument), ui-serif, Georgia, serif; font-size: 2.25rem; line-height: 1; }
+.k-fit-label { margin-top: 0.25rem; font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--muted-foreground); }
+.k-fit-pill { flex-shrink: 0; border-radius: 9999px; background: var(--accent); color: var(--accent-foreground); padding: 0.15rem 0.6rem; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
+@media (max-width: 560px) { .k-fit-pill { display: none; } }

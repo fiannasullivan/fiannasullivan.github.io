@@ -191,6 +191,18 @@
     const a = state.card;
     return { skills: shared(a.skills, m.skills), values: shared(a.values, m.values), style: [...shared(a.workingStyle, m.workingStyle), ...shared(a.personality, m.personality)] };
   }
+  // Same mindset-fit score as the prototype's "What you share" ring (applicant/app.js connection())
+  function fitScore(m) {
+    const a = state.card, keys = ["skills", "values", "workingStyle", "personality"];
+    const hits = keys.reduce((n, k) => n + shared(a[k] || [], m[k] || []).length, 0);
+    const total = keys.reduce((n, k) => n + (m[k] || []).length, 0);
+    return total === 0 ? 0 : Math.min(97, Math.round(58 + (hits / total) * 45));
+  }
+  function fitRing(score) {
+    const circ = 2 * Math.PI * 44;
+    return `<div class="k-fit"><div class="k-fit-ring"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="44" class="k-fit-track"></circle><circle cx="50" cy="50" r="44" class="k-fit-bar" stroke-dasharray="${circ}" stroke-dashoffset="${circ * (1 - score / 100)}"></circle></svg>
+      <div><p class="k-fit-num">${score}%</p><p class="k-fit-label">Mindset fit</p></div></div></div>`;
+  }
   const initials = (n) => str(n).split(" ").filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("") || "?";
   const avatar = (p, cls) => `<div class="${cx("shrink-0 overflow-hidden bg-muted", cls)}">${p.photo ? `<img src="${esc(p.photo)}" alt="" class="size-full object-cover" data-fallback="${esc(initials(p.name))}">` : `<div class="k-initials">${esc(initials(p.name))}</div>`}</div>`;
   // Every match, current first. Past ones only if the applicant keeps their match history.
@@ -206,6 +218,7 @@
       <button type="button" class="k-row-head" data-action="row" data-page="${page}" data-id="${m.id}" aria-expanded="${open}">
         ${avatar(p, "k-row-avatar")}
         <span class="k-row-main"><span class="k-row-name">${esc(p.name)}</span><span class="k-row-sub">${esc([p.role, p.company].filter(Boolean).join(" · "))}</span></span>
+        ${page === "matches" ? `<span class="k-fit-pill" title="Mindset fit">${fitScore(p)}% fit</span>` : ""}
         <span class="k-row-when">${esc(m.when)}</span>
         <span class="k-status is-${m.status}">${STATUS[m.status]}</span>
         ${icon("chevron-down", "k-row-chevron")}
@@ -280,6 +293,7 @@
       return `<div class="k-two">
         <div>${profileCard(m.person, m.isCurrent ? "Current match" : "Past match", hl)}</div>
         <div>
+          <div class="k-panel">${fitRing(fitScore(m.person))}</div>
           ${m.outcome ? `<div class="k-panel"><p class="k-panel-title">${icon("history")}How it ended</p><p class="text-base leading-relaxed">${esc(m.outcome)}</p></div>` : ""}
           ${m.isCurrent ? `<div class="k-panel"><p class="k-panel-title">${icon("sparkles")}Why you were matched</p><p class="text-base leading-relaxed">You and ${esc(first(m.person.name))} both run on candor and ownership, prefer written decisions over meetings, and stay calm when things get chaotic. That’s the mindset CSG looks for in a match.</p></div>` : ""}
           ${why("Overlapping skills", "puzzle", o.skills)}${why("Matching values", "heart", o.values)}${why("Working style & personality", "smile", o.style)}
