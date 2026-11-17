@@ -21,3 +21,5 @@ Product rules (from the INFO 490 brief) the homepage follows:
 Saving and errors:
 - The card is saved under `katalyzr-home-card`; page, open rows, settings, opt-out and any unsaved edit draft under `katalyzr-home-view-v1`. Settings always carry over; the page you were on comes back on a refresh (not when arriving by a link). `cleanCard()` cleans saved data before use.
 - If a page throws, `errorPage()` shows Try again / Go home. Images that fail to load are swapped for a placeholder (`data-fallback`).
+
+Testers: the homepage needs someone signed in (`../accounts.js` session); if nobody is, it sends them to `../applicant/?next=home`. The card is the tester's own (`KatalyzrAccounts.readCard/writeCard`, shared with the Applicant Prototype); page/settings are saved per tester. Past matches (Elena, Daniel, Sofia) are the same for everyone.

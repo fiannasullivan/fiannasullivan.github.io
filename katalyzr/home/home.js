@@ -7,7 +7,14 @@
 (function () {
   "use strict";
 
+  /* ---------- Who is signed in (katalyzr/accounts.js, shared with the Applicant Prototype) ---------- */
+  const ACC = window.KatalyzrAccounts || null;
+  const DEMO_ACCOUNT = { username: "jordan.ellis", name: "Jordan Ellis", code: "KTZ-0417", demo: true };
+  const ACCOUNT = ACC ? ACC.session() : DEMO_ACCOUNT;
+  if (!ACCOUNT) { location.replace("../applicant/?next=home"); return; } // not signed in: sign in first, then come back
+
   /* ---------- Data ---------- */
+  // Jordan's sample card, used for the demo login (testers have their own card, built in the prototype)
   const APPLICANT = {
     photo: "images/applicant-sample.jpg",
     name: "Jordan Ellis",
@@ -102,8 +109,8 @@
 
   /* ---------- Saving (so a refresh keeps your place) ---------- */
   // Prototype: kept in this browser's localStorage. A real build would save to the account.
-  const SAVE_KEY = "katalyzr-home-card"; // the applicant's card (edited in Your Profile)
-  const VIEW_KEY = "katalyzr-home-view-v1"; // which page you're on, open rows, settings, edit draft
+  // Everything is kept separately for each tester. The card is shared with the Applicant Prototype.
+  const VIEW_KEY = ACC ? ACC.key("katalyzr-home-view-v1", ACCOUNT.username) : "katalyzr-home-view-v1"; // which page you're on, open rows, settings, edit draft
   const str = (v) => (typeof v === "string" ? v : v == null ? "" : String(v));
   const strList = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string" && x.trim()) : []);
   // Turns anything (old saves, blank fields, bad data) into a card the pages can safely draw
@@ -115,19 +122,18 @@
       experienceYears: str(c.experienceYears), experience: str(c.experience),
       skills: strList(c.skills), customPersonalSkills: strList(c.customPersonalSkills),
       values: strList(c.values), workingStyle: strList(c.workingStyle), personality: strList(c.personality),
-      mindset: str(c.mindset),
+      mindset: str(c.mindset), linkedinUrl: str(c.linkedinUrl),
     };
   }
   function readJSON(key) { try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; } }
   function writeJSON(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (e) { return false; } }
+  // The tester's card from the prototype. Nothing saved yet: Jordan gets his sample card, testers start with their name.
   function loadCard() {
-    const saved = readJSON(SAVE_KEY);
-    return saved && typeof saved === "object" && str(saved.name).trim() ? cleanCard(saved) : cleanCard(APPLICANT);
+    const saved = ACC ? ACC.readCard(ACCOUNT.username) : null;
+    if (saved && typeof saved === "object" && str(saved.name).trim()) return cleanCard(saved);
+    return ACCOUNT.demo ? cleanCard(APPLICANT) : cleanCard({ name: ACCOUNT.name });
   }
-  function saveCard(card) {
-    // If storage is full (a big photo), keep everything but the uploaded photo
-    if (!writeJSON(SAVE_KEY, card)) writeJSON(SAVE_KEY, { ...card, photo: APPLICANT.photo });
-  }
+  function saveCard(card) { if (ACC) ACC.writeCard(ACCOUNT.username, card); } // too big a photo: saved without it
 
   /* ---------- State ---------- */
   const state = {
@@ -138,7 +144,7 @@
     chipDrafts: {}, // text typed into each "Add your own" box
     savedNote: false, // "Card saved" notice
     photoError: "", // shown if an uploaded photo can't be read
-    settings: { email: true, keepHistory: true, keepCard: true }, // Jordan opted in to keeping match history
+    settings: { email: true, keepHistory: true, keepCard: true }, // testers start opted in to keeping match history
     open: { matches: null, introductions: null }, // which match row is expanded on each page
     modal: null, // "optout"
     optedOut: false,
@@ -253,7 +259,10 @@
   function header() {
     return `<header class="csg-header"><div class="k-header-inner">
       <div class="flex items-center gap-3">${CSG_MARK}<span class="font-serif text-2xl tracking-tight">Katalyzr</span><span class="text-xs text-muted-foreground">by Culminate Strategy Group</span></div>
-      <span class="flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground">${icon("lock", "size-3")}Private invitation · KTZ-0417</span>
+      <div class="flex items-center gap-4">
+        <span class="flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground">${icon("lock", "size-3")}Private invitation · ${esc(ACCOUNT.code || "")}</span>
+        ${ACC ? `<button type="button" data-action="sign-out" class="k-signout" title="Signed in as ${esc(ACCOUNT.username)}">${icon("log-out", "size-3.5")}Sign out</button>` : ""}
+      </div>
     </div></header>`;
   }
   // Home button at the bottom of every sub-page (not shown on the homepage itself)
@@ -556,6 +565,7 @@
     if (!el || el.disabled) return;
     const d = el.dataset;
     switch (d.action) {
+      case "sign-out": saveView(); if (ACC) ACC.signOut(); location.href = "../applicant/"; return;
       case "view": state.view = d.view; state.edit = null; state.savedNote = false; state.open = { matches: null, introductions: null }; render(); return window.scrollTo({ top: 0 });
       case "edit-start": state.edit = cleanCard(JSON.parse(JSON.stringify(state.card))); state.editErrors = false; state.chipDrafts = {}; state.savedNote = false; render(); return window.scrollTo({ top: 0 });
       case "edit-cancel": state.edit = null; render(); return window.scrollTo({ top: 0 });

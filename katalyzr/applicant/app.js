@@ -67,6 +67,19 @@
     { title: "Two conversations", body: "First a psychologist, so you walk in already understood. Then the hiring manager. That’s it.", icon: "messages-square" },
   ];
   const firstName = (n) => String(n || "").trim().split(/\s+/)[0] || "";
+
+  /* ---------- Testers (katalyzr/accounts.js) ---------- */
+  // Each tester signs in with their own login, and sees their own name, invitation code, card and progress.
+  const ACC = window.KatalyzrAccounts || { DEMO: "jordan.ellis", find: () => null, check: async () => null, session: () => null, signIn() {}, signOut() {}, key: (b, u) => b + ":" + u, readCard: () => null, writeCard() {}, clearCard() {}, initialsPhoto: () => null };
+  const LI = window.KatalyzrLinkedIn || null; // reads LinkedIn's "Save to PDF" (katalyzr/linkedin-pdf.js)
+  const DEMO_ACCOUNT = { username: "jordan.ellis", name: "Jordan Ellis", code: "KTZ-0417", demo: true };
+  // The signed-in tester (Jordan, the demo applicant, if nobody is signed in)
+  function me() { return ACC.find(state.account.username) || ACC.find(ACC.DEMO) || DEMO_ACCOUNT; }
+  const myFirstName = () => firstName(me().name) || "there";
+  // A tester's card starts with just their name. Jordan's demo card starts blank, as before.
+  const freshCard = (acc) => (acc.demo ? { ...EMPTY_APPLICANT } : { ...EMPTY_APPLICANT, name: acc.name });
+  // "Fill with sample" and skipping ahead: Jordan gets his sample card; testers keep their own name and get an initials photo
+  const sampleFor = (acc) => (acc.demo ? { ...SAMPLE_APPLICANT } : { ...SAMPLE_APPLICANT, name: acc.name, photo: ACC.initialsPhoto(acc.name) || SAMPLE_APPLICANT.photo });
   const INTERVIEWS = {
     psychologist: {
       eyebrow: "Step 5 · First conversation",
@@ -130,17 +143,19 @@
     chipDrafts: {},
     flipped: false, // step 2: has the match card been flipped over?
     modal: null, // "how" (How did you find me?), "optout", "why-psych", or "linkedin" (fill card from LinkedIn)
-    linkedin: { url: "", status: "idle", error: "", imported: false }, // step 1: fill the card from a LinkedIn profile
+    linkedin: freshLinkedIn(), // step 1: fill the card from the tester's LinkedIn PDF
     booking: freshBookings(), // steps 5 & 6: the day and time picked for each interview
     optedOut: false, // welcome: applicant declined the invitation
     optOutReason: "",
     photoError: "", // step 1: shown if an uploaded photo can't be read
     // Account page (before the invitation). The password is never saved anywhere: only the username and "signed in".
-    account: { signedIn: false, username: "", password: "", confirm: "", show: false, errors: {} },
+    account: blankAccount(),
     player: { time: 0, playing: false, speed: 1, chaptersOpen: false },
     call: { joined: false, ended: false, seconds: 0, mic: true, cam: true, captions: true },
     brief: { approved: false, editing: false, note: "", noteSent: false }, // step 5: the Mindset brief the applicant approves
   };
+  function blankAccount() { return { signedIn: false, username: "", password: "", confirm: "", show: false, errors: {}, checking: false }; }
+  function freshLinkedIn() { return { url: "", status: "idle", error: "", imported: false, result: null }; }
   function freshBookings() {
     const blank = () => ({ month: null, date: null, time: null, confirmed: false, skipped: false });
     return { psychologist: blank(), "hiring-manager": blank() };
@@ -149,8 +164,11 @@
   const clearTimers = () => { timers.forEach((t) => clearInterval(t)); timers = []; };
 
   /* ---------- Saving progress (so a refresh doesn't send you back to the start) ---------- */
-  // Prototype: progress is kept in this browser's localStorage. A real build would save it to the account.
-  const SAVE_KEY = "katalyzr-invite-v1";
+  // Prototype: progress is kept in this browser's localStorage, separately for each tester.
+  // The card itself is shared with the homepage (KatalyzrAccounts.readCard / writeCard).
+  // A real build would save both to the account.
+  const SAVE_BASE = "katalyzr-invite-v1";
+  const saveKey = () => ACC.key(SAVE_BASE, me().username);
   const str = (v) => (typeof v === "string" ? v : v == null ? "" : String(v));
   const strList = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string" && x.trim()) : []);
   // Turns anything (old saves, half-filled cards, bad data) into a card the screens can safely draw
@@ -162,37 +180,39 @@
       experienceYears: str(a.experienceYears), experience: str(a.experience),
       skills: strList(a.skills), customPersonalSkills: strList(a.customPersonalSkills),
       values: strList(a.values), workingStyle: strList(a.workingStyle), personality: strList(a.personality),
-      mindset: str(a.mindset),
+      mindset: str(a.mindset), linkedinUrl: str(a.linkedinUrl),
     };
   }
   function saveProgress() {
     try { writeProgress(); } catch (e) { console.warn("Katalyzr: couldn't save progress", e); }
   }
   function writeProgress() {
+    if (!state.account.signedIn) return; // nothing to save before someone signs in
+    ACC.writeCard(me().username, state.applicant);
     const data = {
-      step: state.step, applicant: state.applicant, episodeListened: state.episodeListened, flipped: state.flipped,
-      linkedin: { url: state.linkedin.url, imported: state.linkedin.imported },
+      step: state.step, episodeListened: state.episodeListened, flipped: state.flipped,
+      linkedin: { url: state.linkedin.url, imported: state.linkedin.imported, result: state.linkedin.result },
       booking: state.booking, optedOut: state.optedOut, optOutReason: state.optOutReason,
-      account: { signedIn: state.account.signedIn, username: state.account.username }, // never the password
       brief: { approved: state.brief.approved, note: state.brief.note, noteSent: state.brief.noteSent },
       callEnded: state.call.ended, episodeTime: state.player.time,
     };
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); }
-    catch (e) {
-      // Storage full (usually a big uploaded photo): save everything except the photo
-      try { localStorage.setItem(SAVE_KEY, JSON.stringify({ ...data, applicant: { ...data.applicant, photo: null } })); } catch (e2) { /* storage unavailable */ }
-    }
+    try { localStorage.setItem(saveKey(), JSON.stringify(data)); } catch (e) { /* storage unavailable */ }
   }
+  // Loads the signed-in tester's card and progress. Returns true if they had saved progress.
   function loadProgress() {
+    const saved = ACC.readCard(me().username);
+    state.applicant = saved ? cleanApplicant(saved) : freshCard(me());
     let d;
-    try { d = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { d = null; }
-    if (!d || typeof d !== "object") return;
+    try { d = JSON.parse(localStorage.getItem(saveKey())); } catch (e) { d = null; }
+    if (!d || typeof d !== "object") return false;
     try {
       if (STEPS.includes(d.step)) state.step = d.step;
-      state.applicant = cleanApplicant(d.applicant);
       state.episodeListened = d.episodeListened === true;
       state.flipped = d.flipped === true;
-      if (d.linkedin && typeof d.linkedin === "object") state.linkedin = { url: str(d.linkedin.url), status: "idle", error: "", imported: d.linkedin.imported === true };
+      if (d.linkedin && typeof d.linkedin === "object") {
+        const r = d.linkedin.result && typeof d.linkedin.result === "object" ? d.linkedin.result : null;
+        state.linkedin = { ...freshLinkedIn(), url: str(d.linkedin.url), imported: d.linkedin.imported === true, result: r ? { filled: strList(r.filled), missing: strList(r.missing), notes: strList(r.notes) } : null };
+      }
       if (d.booking && typeof d.booking === "object") {
         for (const k of ["psychologist", "hiring-manager"]) {
           const b = d.booking[k];
@@ -203,7 +223,6 @@
       }
       state.optedOut = d.optedOut === true;
       state.optOutReason = str(d.optOutReason);
-      if (d.account && typeof d.account === "object") { state.account.signedIn = d.account.signedIn === true; state.account.username = str(d.account.username); }
       if (d.brief && typeof d.brief === "object") state.brief = { approved: d.brief.approved === true, editing: false, note: str(d.brief.note), noteSent: d.brief.noteSent === true };
       state.call.ended = d.callEnded === true && state.step === "psychologist";
       const t = Number(d.episodeTime);
@@ -211,14 +230,15 @@
     } catch (e) {
       console.warn("Katalyzr: couldn't restore saved progress, starting fresh.", e);
     }
+    return true;
   }
-  function clearProgress() { try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* storage unavailable */ } }
+  function clearProgress() { try { localStorage.removeItem(saveKey()); } catch (e) { /* storage unavailable */ } }
 
   function goTo(step) {
     const idx = STEPS.indexOf(step);
     if (idx > STEPS.indexOf("build") && !checklist(state.applicant).every((c) => c.done)) {
       const filled = Object.fromEntries(Object.entries(state.applicant).filter(([, v]) => (Array.isArray(v) ? v.length > 0 : !!v)));
-      state.applicant = { ...SAMPLE_APPLICANT, ...filled };
+      state.applicant = cleanApplicant({ ...sampleFor(me()), ...filled });
     }
     state.episodeListened = idx > STEPS.indexOf("episode");
     state.step = step;
@@ -234,7 +254,24 @@
     startStepTimers();
   }
   function updateApplicant(patch) { state.applicant = { ...state.applicant, ...patch }; render(); }
-  function restart() { clearProgress(); state.account = { signedIn: false, username: "", password: "", confirm: "", show: false, errors: {} }; state.flipped = false; state.applicant = { ...EMPTY_APPLICANT }; state.optedOut = false; state.optOutReason = ""; state.brief = { approved: false, editing: false, note: "", noteSent: false }; state.linkedin = { url: "", status: "idle", error: "", imported: false }; state.booking = freshBookings(); goTo("welcome"); }
+  // Puts the invitation back at the start (keepCard: keep the tester's card, e.g. "Back to the first match")
+  function freshJourney(keepCard) {
+    state.step = "welcome"; state.flipped = false; state.optedOut = false; state.optOutReason = ""; state.episodeListened = false;
+    state.brief = { approved: false, editing: false, note: "", noteSent: false };
+    state.booking = freshBookings(); state.modal = null;
+    if (!keepCard) { state.applicant = freshCard(me()); state.linkedin = freshLinkedIn(); }
+  }
+  // "Restart prototype" / "Start over": the same tester starts again with a fresh card, still signed in
+  function restart() { clearProgress(); freshJourney(false); goTo("welcome"); }
+  function signOut() {
+    saveProgress();
+    ACC.signOut();
+    state.account = blankAccount();
+    freshJourney(false);
+    state.applicant = { ...EMPTY_APPLICANT };
+    clearTimers();
+    render(true);
+  }
 
   /* ---------- Helpers ---------- */
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -493,7 +530,8 @@
       <header class="csg-header border-b"><div class="mx-auto flex max-w-7xl items-center justify-between px-8 py-4">
         <div class="flex items-center gap-3">${CSG_MARK}<span class="font-serif text-2xl tracking-tight">Katalyzr</span><span class="text-xs text-muted-foreground">by Culminate Strategy Group</span></div>
         <div class="flex items-center gap-4">
-          <span class="flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground">${icon("lock", "size-3")}${onAccount ? "Invite only" : "Private invitation · KTZ-0417"}</span>
+          <span class="flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground">${icon("lock", "size-3")}${onAccount ? "Invite only" : "Private invitation · " + esc(me().code || "")}</span>
+          ${onAccount ? "" : `<button type="button" data-action="sign-out" class="flex items-center gap-1.5 text-xs text-muted-foreground underline decoration-dotted underline-offset-4 hover:text-foreground" title="Signed in as ${esc(me().username)}">${icon("log-out", "size-3.5")}Sign out</button>`}
           <label class="flex items-center gap-2 text-xs text-muted-foreground"><span>Applicant prototype</span>
             <select id="step-select" class="rounded-md border bg-card px-2 py-1 text-xs text-foreground">${
               `<option value="account"${onAccount ? " selected" : ""}>Sign in</option>` +
@@ -511,15 +549,15 @@
   /* ---------- Screens ---------- */
   /* ---------- Sign in (the start page for everyone, before the personal invitation) ---------- */
   // Each invitation email explains who Culminate is and gives a username + password. Signing in with them
-  // opens that person's personal invitation. Prototype: only Jordan's demo login exists.
+  // opens that person's personal invitation. Applicant logins live in katalyzr/accounts.js (one per tester).
   // The same sign-in page is used by applicants and hiring managers: the login says which one you are.
   // Prototype: these demo logins stand in for the ones sent in each invitation email.
   const THIS_ROLE = "applicant";
   const LOGINS = {
-    "jordan.ellis": { password: "Katalyzr2026", role: "applicant", url: "../applicant/" },
-    "elena.vasquez": { password: "Katalyzr2026", role: "manager", url: "../hiring-manager/" },
+    "elena.vasquez": { password: "Katalyzr2026", role: "manager", url: "../hiring-manager/" }, // hiring managers: sent to their prototype
   };
-  const DEMO_LOGIN = { username: "jordan.ellis", password: LOGINS["jordan.ellis"].password }; // prototype only: "Fill as Jordan"
+  const DEMO_LOGIN = { username: "jordan.ellis", password: "Katalyzr2026" }; // prototype only: "Fill as Jordan"
+  const NEXT_HOME = new URLSearchParams(location.search).get("next") === "home"; // came from the homepage to sign in
   const HANDOFF_KEY = "katalyzr-signin-handoff"; // passes a sign-in to the other prototype for a moment
   function findLogin(acc) {
     const l = LOGINS[acc.username.trim().toLowerCase()];
@@ -529,8 +567,6 @@
     const e = {};
     if (!acc.username.trim()) e.username = "Enter the username from your invitation email.";
     if (!acc.password) e.password = "Enter the password from your invitation email.";
-    if (!e.username && !e.password && !findLogin(acc))
-      e.form = "That username and password don’t match an invitation. Check your invitation email and try again.";
     return e;
   }
   // If someone signed in on the other prototype's page with a login for this one, pick it up
@@ -538,9 +574,11 @@
     try {
       const h = JSON.parse(localStorage.getItem(HANDOFF_KEY));
       localStorage.removeItem(HANDOFF_KEY);
-      if (h && h.role === THIS_ROLE && Date.now() - h.at < 120000) {
-        state.account = { signedIn: true, username: str(h.username), password: "", confirm: "", show: false, errors: {} };
-        state.step = "welcome";
+      if (h && h.role === THIS_ROLE && Date.now() - h.at < 120000 && ACC.find(h.username)) {
+        state.account = { ...blankAccount(), signedIn: true, username: ACC.find(h.username).username };
+        ACC.signIn(state.account.username);
+        freshJourney(true);
+        loadProgress();
         return true;
       }
     } catch (e) { /* storage unavailable */ }
@@ -578,41 +616,56 @@
             <button type="button" data-action="acc-show" class="k-pw-toggle" aria-label="${acc.show ? "Hide password" : "Show password"}">${icon("eye", "size-4")}${acc.show ? "Hide" : "Show"}</button></div>
           ${fieldErr("password")}
         </div>
-        <button type="submit" data-slot="button" class="${merge(cx(BTN_BASE, BTN_VARIANT.default, BTN_SIZE.lg, "csg-cta mt-2 h-12 w-full gap-2 rounded-full text-base"))}">Sign in${icon("arrow-right", "size-4")}</button>
+        <button type="submit" data-slot="button"${acc.checking ? " disabled" : ""} class="${merge(cx(BTN_BASE, BTN_VARIANT.default, BTN_SIZE.lg, "csg-cta mt-2 h-12 w-full gap-2 rounded-full text-base"))}">${acc.checking ? "Signing in…" : "Sign in" + icon("arrow-right", "size-4")}</button>
         <p class="text-center text-xs text-muted-foreground">Can’t find your invitation email? Contact Culminate Strategy Group.</p>
         <!-- Prototype only: fills Jordan's demo login from the invitation email. Remove for the final app. -->
         <button type="button" data-action="acc-fill" class="k-proto-skip self-center">${icon("sparkles", "size-3.5")}Prototype only · Fill as Jordan</button>
       </form>
     </div>`;
   }
-  function submitAccount() {
+  async function submitAccount() {
     const acc = state.account;
+    if (acc.checking) return;
     acc.errors = signInProblems(acc);
-    if (Object.keys(acc.errors).length) {
+    const showErrors = () => {
       render();
       const bad = document.querySelector('#account-form [aria-invalid="true"]');
       if (bad) bad.focus();
-      return;
-    }
+    };
+    if (Object.keys(acc.errors).length) return showErrors();
     // A hiring manager's login: send them to the hiring manager prototype, already signed in
     const login = findLogin(acc);
-    if (login.role !== THIS_ROLE) {
+    if (login) {
       try { localStorage.setItem(HANDOFF_KEY, JSON.stringify({ username: acc.username.trim().toLowerCase(), role: login.role, at: Date.now() })); } catch (e) { /* storage unavailable */ }
       acc.password = "";
       location.href = login.url;
       return;
     }
+    // An applicant (tester) login from katalyzr/accounts.js
+    acc.checking = true; render();
+    let account = null;
+    try { account = await ACC.check(acc.username, acc.password); }
+    catch (e) { acc.errors.form = "This browser couldn’t check your sign-in. Try a recent Chrome, Edge or Safari."; }
+    acc.checking = false;
+    if (!account) {
+      if (!acc.errors.form) acc.errors.form = "That username and password don’t match an invitation. Check your invitation email and try again.";
+      return showErrors();
+    }
     // Prototype: the password is checked, then cleared right away. Only the username is kept.
-    acc.username = acc.username.trim(); acc.password = ""; acc.confirm = ""; acc.show = false; acc.errors = {};
-    acc.signedIn = true;
-    goTo("welcome");
+    state.account = { ...blankAccount(), signedIn: true, username: account.username };
+    ACC.signIn(account.username);
+    freshJourney(false);
+    const resumed = loadProgress(); // pick up where this tester left off, if they've been here before
+    if (NEXT_HOME) { saveProgress(); location.href = "../home/"; return; }
+    if (!resumed) return goTo("welcome");
+    clearTimers(); render(true); window.scrollTo({ top: 0 }); startStepTimers();
   }
 
   function welcomeScreen() {
     return `<div class="grid grid-cols-[1.1fr_1fr] items-center gap-16 py-6">
       <section aria-labelledby="welcome-heading">
         <p class="mb-4 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">${icon("mail-open", "size-4")}A personal invitation</p>
-        <h1 id="welcome-heading" class="font-serif text-7xl leading-[1] text-balance">Jordan, someone wants to <em class="text-primary">meet you</em>.</h1>
+        <h1 id="welcome-heading" class="font-serif text-7xl leading-[1] text-balance">${esc(myFirstName())}, someone wants to <em class="text-primary">meet you</em>.</h1>
         <div class="mt-8 max-w-xl space-y-4 text-lg leading-relaxed text-pretty">
           <p>We came across your work on LinkedIn and kept coming back to it. Katalyzr is invite-only: we introduce a very small number of people to hiring managers who share how they see the world.</p>
           <p class="text-muted-foreground">There are no application forms and no interview gauntlet. Just two conversations.</p>
@@ -652,7 +705,7 @@
       ${iconTile("circle-check", "size-16")}
       <p class="mt-6 mb-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">Invitation declined</p>
       <h1 class="font-serif text-5xl leading-[1.05] text-balance">You’ve opted out.</h1>
-      <p class="mt-4 text-base leading-relaxed text-muted-foreground text-pretty">Thanks for letting us know, Jordan. We won’t contact you about Katalyzr again, and your details won’t be shared with any hiring manager. We’ll also remove the LinkedIn profile details we used to invite you.</p>
+      <p class="mt-4 text-base leading-relaxed text-muted-foreground text-pretty">Thanks for letting us know, ${esc(myFirstName())}. We won’t contact you about Katalyzr again, and your details won’t be shared with any hiring manager. We’ll also remove the LinkedIn profile details we used to invite you.</p>
       <p class="mt-3 text-sm text-muted-foreground">Questions? Reach out to Culminate Strategy Group any time.</p>
       <div class="mt-8 flex items-center gap-4">
         ${button({ variant: "outline", className: "h-11 gap-2 rounded-full px-5", attrs: 'data-action="undo-optout"', content: icon("rotate-ccw", "size-4") + "Changed your mind? Undo" })}
@@ -682,23 +735,32 @@
         </div>`;
     } else if (state.modal === "linkedin") {
       const li = state.linkedin, loading = li.status === "loading";
+      const linkOk = LI_URL.test(li.url.trim());
+      const profileHref = linkOk ? "https://www." + li.url.trim().match(LI_URL)[0].replace(/^www\./i, "") : "https://www.linkedin.com/";
+      const stepRow = (n, title, body) => `<li class="flex gap-4"><span class="k-step-n">${n}</span><div class="flex-1"><p class="font-medium">${title}</p>${body}</div></li>`;
       body = `<p class="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-primary">${icon("linkedin", "size-4")}Fill from LinkedIn</p>
         <h2 id="modal-title" class="font-serif text-3xl leading-tight">Start your card from LinkedIn</h2>
-        <p class="mt-3 text-base leading-relaxed text-muted-foreground">Paste a link to your LinkedIn profile and we’ll fill in what’s already there, so you don’t have to type it twice.</p>
+        <p class="mt-3 text-base leading-relaxed text-muted-foreground">LinkedIn doesn’t let other websites read profiles from a link, so we use the PDF of your profile that LinkedIn makes for you. It takes about 30 seconds.</p>
+        <ol class="mt-6 flex flex-col gap-5">
+          ${stepRow(1, "Paste your LinkedIn profile link", `<div class="mt-2 flex flex-col gap-1.5">
+            <label for="li-url" class="sr-only">Your LinkedIn profile link</label>
+            <input id="li-url" type="url" inputmode="url" autocomplete="url" value="${esc(li.url)}" placeholder="linkedin.com/in/your-name"${loading ? " disabled" : ""} class="${cx(INPUT, li.error && li.errorField === "url" && INVALID)}">
+            <p class="text-xs text-muted-foreground">We use it to check the PDF is yours, and keep it on your card.</p></div>`)}
+          ${stepRow(2, "Save your profile as a PDF", `<p class="mt-1 text-sm leading-relaxed text-muted-foreground">On your LinkedIn profile, click <strong class="text-foreground">More</strong> (or <strong class="text-foreground">Resources</strong>) under your name, then <strong class="text-foreground">Save to PDF</strong>.</p>
+            <a href="${esc(profileHref)}" target="_blank" rel="noopener" class="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary underline decoration-primary/40 underline-offset-4 hover:decoration-primary">${icon("linkedin", "size-4")}${linkOk ? "Open my LinkedIn profile" : "Open LinkedIn"}</a>`)}
+          ${stepRow(3, "Upload the PDF", `<label for="li-pdf" class="${cx("mt-2 inline-flex cursor-pointer items-center gap-2 rounded-full border bg-card px-4 py-2 text-sm hover:bg-secondary focus-within:ring-3 focus-within:ring-primary/20", loading && "pointer-events-none opacity-60")}">${icon("upload", "size-4")}${loading ? "Reading " + esc(li.fileName || "your profile") + "…" : "Choose my LinkedIn PDF"}<input id="li-pdf" type="file" accept="application/pdf,.pdf" class="sr-only"${loading ? " disabled" : ""}></label>
+            <p class="mt-1.5 text-xs text-muted-foreground">Read right here in your browser. The PDF isn’t uploaded or saved anywhere.</p>`)}
+        </ol>
+        ${li.error ? `<div class="k-error-box mt-5" role="alert">${icon("circle-help", "size-5")}<div><p class="text-sm">${esc(li.error)}</p></div></div>` : ""}
         <div class="mt-6 grid grid-cols-2 gap-4">
           <div class="rounded-xl border bg-card/70 p-4"><p class="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${icon("check", "size-3.5 text-primary")}We’ll fill in</p>
-            <ul class="flex flex-col gap-1 text-sm"><li>Photo</li><li>Name and current role</li><li>Years of experience</li><li>What you’ve built</li><li>Skills</li></ul></div>
-          <div class="rounded-xl border bg-card/70 p-4"><p class="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${icon("user-round", "size-3.5 text-brass")}You’ll choose</p>
-            <ul class="flex flex-col gap-1 text-sm"><li>Values</li><li>Working style</li><li>Personality</li><li>Mindset</li></ul></div>
+            <ul class="flex flex-col gap-1 text-sm"><li>Your name</li><li>Current role (or your last one)</li><li>Years worked, from your job dates</li><li>What you’ve built, from your About</li><li>Your top skills</li></ul></div>
+          <div class="rounded-xl border bg-card/70 p-4"><p class="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">${icon("user-round", "size-3.5 text-brass")}You’ll add</p>
+            <ul class="flex flex-col gap-1 text-sm"><li>A photo (it isn’t in the PDF)</li><li>Values</li><li>Working style</li><li>Personality</li><li>Mindset</li></ul></div>
         </div>
-        <div class="mt-6 flex flex-col gap-1.5">
-          <label for="li-url" class="text-sm font-medium">Your LinkedIn profile link</label>
-          <input id="li-url" type="url" inputmode="url" autocomplete="url" value="${esc(li.url)}" placeholder="linkedin.com/in/your-name"${loading ? " disabled" : ""} class="${cx(INPUT, li.error && INVALID)}">
-          ${li.error ? `<p class="text-sm" style="color:var(--csg-coral-deep)">${esc(li.error)}</p>` : `<p class="text-xs text-muted-foreground">Read through LinkedIn’s official API. You can edit anything afterwards.</p>`}
-        </div>
-        <div class="mt-8 flex items-center justify-end gap-3 border-t pt-5">
+        <div class="mt-8 flex items-center justify-between gap-3 border-t pt-5">
+          ${me().demo ? `<button type="button" data-action="li-sample" class="k-proto-skip"${loading ? " disabled" : ""}>${icon("sparkles", "size-3.5")}Prototype only · Use Jordan’s sample profile</button>` : "<span></span>"}
           ${button({ variant: "outline", className: "h-11 rounded-full px-5", attrs: `data-action="close-modal"${loading ? " disabled" : ""}`, content: "Cancel" })}
-          ${button({ size: "lg", className: "csg-cta h-11 gap-2 rounded-full px-5", attrs: `data-action="li-import"${loading ? " disabled" : ""}`, content: loading ? "Reading your profile…" : icon("linkedin", "size-4") + "Fill my card" })}
         </div>`;
     } else if (state.modal === "why-psych") {
       const item = (ic, title, text) => `<li class="flex gap-4">${iconTile(ic)}<div><p class="font-medium">${title}</p><p class="mt-1 text-sm leading-relaxed text-muted-foreground">${text}</p></div></li>`;
@@ -767,6 +829,18 @@
       personality: { label: "Personality", hint: "pick 3–4", options: PERSONALITIES, selected: a.personality, max: 4, invalid: a.personality.length < 3, set: (v) => updateApplicant({ personality: v }) },
     };
   }
+  // Shown on "Build your card" after filling from LinkedIn: what we filled, what we couldn't find, what's left
+  function linkedInBanner() {
+    const r = state.linkedin.result || { filled: [], missing: [], notes: [] };
+    const list = (items) => items.map((x) => esc(x)).join(", ");
+    return `<div class="k-li-banner" role="status">${icon("linkedin", "size-5")}<div>
+      <p class="font-medium">Filled from your LinkedIn profile</p>
+      ${r.filled.length ? `<p class="text-sm text-muted-foreground"><strong class="text-foreground">Filled in:</strong> ${list(r.filled)}.</p>` : ""}
+      ${r.missing.length ? `<p class="text-sm text-muted-foreground"><strong class="text-foreground">Not on your LinkedIn:</strong> ${list(r.missing)}. Add ${r.missing.length > 1 ? "them" : "it"} below.</p>` : ""}
+      ${r.notes.map((n) => `<p class="text-sm text-muted-foreground">${esc(n)}</p>`).join("")}
+      <p class="text-sm text-muted-foreground">Check everything, then ${state.applicant.photo ? "" : "add a photo and "}choose your values, working style, personality and mindset. Those aren’t on LinkedIn, so they’re yours to pick.</p>
+    </div><button type="button" data-action="li-dismiss" class="rounded-full p-1 text-muted-foreground hover:text-foreground" aria-label="Dismiss">${icon("x", "size-4")}</button></div>`;
+  }
   function buildScreen() {
     const a = state.applicant, list = checklist(a), done = list.filter((c) => c.done).length, ready = done === list.length;
     const err = (bad) => state.showErrors && bad;
@@ -792,7 +866,7 @@
           </div>
         </div>
         <form id="build-form" class="flex flex-col gap-8 rounded-2xl border bg-card p-8" novalidate>
-          ${state.linkedin.imported ? `<div class="k-li-banner" role="status">${icon("linkedin", "size-5")}<div><p class="font-medium">Filled from your LinkedIn profile</p><p class="text-sm text-muted-foreground">We added your photo, name, role, experience and skills. Check them, then choose your values, working style, personality and mindset below. Those aren’t on LinkedIn, so they’re yours to pick.</p></div><button type="button" data-action="li-dismiss" class="rounded-full p-1 text-muted-foreground hover:text-foreground" aria-label="Dismiss">${icon("x", "size-4")}</button></div>` : ""}
+          ${state.linkedin.imported ? linkedInBanner() : ""}
           ${section("The basics", `
             <div class="${cx("flex items-center gap-4 rounded-lg", err(!a.photo) && "outline-2 outline-offset-4 outline-red-500")}">
               ${avatar(a, "size-16 rounded-full")}
@@ -1288,24 +1362,58 @@
   }
 
   /* ---------- Fill from LinkedIn ---------- */
-  // Prototype: a real build would read the profile through LinkedIn's official API.
-  // Here any valid profile link fills in the sample applicant's LinkedIn details after a short wait.
-  function importFromLinkedIn() {
+  // LinkedIn doesn't let other sites read a profile from its link, so testers upload the PDF LinkedIn makes
+  // ("More → Save to PDF"). katalyzr/linkedin-pdf.js reads it in the browser; nothing is uploaded.
+  const LI_URL = /(?:www\.)?linkedin\.com\/in\/[\w%-]+/i;
+  async function importLinkedInPdf(file) {
     const li = state.linkedin;
     if (li.status === "loading") return;
-    if (!/linkedin\.com\/in\/[\w%-]+/i.test(li.url.trim())) {
-      li.error = "That doesn’t look like a LinkedIn profile link. It should look like linkedin.com/in/your-name.";
-      render();
-      const el = document.getElementById("li-url"); if (el) el.focus();
-      return;
+    li.error = ""; li.errorField = "";
+    const url = li.url.trim();
+    if (url && !LI_URL.test(url)) {
+      li.error = "That link doesn’t look like a LinkedIn profile. It should look like linkedin.com/in/your-name."; li.errorField = "url";
+      return render();
     }
-    li.error = ""; li.status = "loading"; render();
+    if (!/\.pdf$/i.test(file.name || "") && file.type !== "application/pdf") {
+      li.error = "That file isn’t a PDF. On your LinkedIn profile, use More → Save to PDF, then choose the file it downloads.";
+      return render();
+    }
+    if (!LI) { li.error = "The LinkedIn reader didn’t load. Refresh the page and try again, or fill in your card by hand."; return render(); }
+    li.status = "loading"; li.fileName = file.name || "your PDF"; render();
+    try {
+      const profile = await LI.readFile(file);
+      if (!profile.name || !(profile.experiences.length || profile.url || profile.topSkills.length)) throw new Error("not-linkedin");
+      const r = LI.toCard(profile, { personalSkills: PERSONAL_SKILLS });
+      const notes = [...r.notes];
+      if (url && profile.url && !LI.sameProfile(url, profile.url))
+        notes.push(`Heads up: this PDF is from ${profile.url.replace(/^https?:\/\/(www\.)?/, "")}, not the link you entered. Make sure it’s your own profile.`);
+      if (!url && profile.url) li.url = profile.url;
+      const { linkedinUrl, ...patch } = r.patch;
+      state.applicant = cleanApplicant({ ...state.applicant, ...patch, linkedinUrl: li.url.trim() || linkedinUrl || state.applicant.linkedinUrl });
+      li.result = { filled: r.filled, missing: r.missing, notes };
+      li.imported = true; state.modal = null; state.showErrors = false;
+    } catch (e) {
+      console.warn("Katalyzr: couldn't read the LinkedIn PDF", e);
+      li.error = e && e.message === "not-linkedin"
+        ? "This PDF doesn’t look like a LinkedIn profile. On your profile, use More → Save to PDF, then upload the file it downloads."
+        : "We couldn’t read that PDF. Try saving it from LinkedIn again, or fill in your card by hand.";
+    }
+    li.status = "idle";
+    render();
+  }
+  // Prototype only (Jordan's demo login): fill in Jordan's sample LinkedIn details after a short wait
+  function useSampleLinkedIn() {
+    const li = state.linkedin;
+    if (li.status === "loading") return;
+    li.error = ""; li.status = "loading"; li.fileName = "Jordan’s profile"; render();
     setTimeout(() => {
-      const s = SAMPLE_APPLICANT;
-      updateApplicant(cleanApplicant({ ...state.applicant, photo: s.photo, name: s.name, role: s.role, experienceYears: s.experienceYears, experience: s.experience, skills: [...s.skills] }));
+      const sm = SAMPLE_APPLICANT;
+      if (!li.url.trim()) li.url = "https://www.linkedin.com/in/jordan-ellis";
+      state.applicant = cleanApplicant({ ...state.applicant, photo: sm.photo, name: sm.name, role: sm.role, experienceYears: sm.experienceYears, experience: sm.experience, skills: [...sm.skills], linkedinUrl: li.url });
+      li.result = { filled: ["Photo", "Name", "Current role", "Years worked", "What you’ve built", `Skills (${sm.skills.length})`], missing: [], notes: [] };
       li.status = "idle"; li.imported = true; state.modal = null; state.showErrors = false;
       render();
-    }, 1600);
+    }, 1200);
   }
 
   /* ---------- Events ---------- */
@@ -1328,8 +1436,9 @@
       case "restart": return restart();
       case "acc-show": state.account.show = !state.account.show; return render();
       case "acc-fill": state.account = { ...state.account, username: DEMO_LOGIN.username, password: DEMO_LOGIN.password, errors: {} }; return render();
+      case "sign-out": return signOut();
       case "retry": return render();
-      case "modal": state.modal = el.dataset.modal; state.linkedin.error = ""; render(); { const m = document.querySelector(".k-modal input[type=url]") || document.querySelector(".k-modal button, .k-modal input"); if (m) m.focus(); } return;
+      case "modal": state.modal = el.dataset.modal; state.linkedin.error = ""; state.linkedin.errorField = ""; render(); { const m = document.querySelector(".k-modal input[type=url]") || document.querySelector(".k-modal button, .k-modal input"); if (m) m.focus(); } return;
       case "close-modal": state.modal = null; return render();
       case "confirm-optout": state.optedOut = true; state.modal = null; render(true); return window.scrollTo({ top: 0, behavior: "smooth" });
       case "undo-optout": state.optedOut = false; state.optOutReason = ""; return render(true);
@@ -1340,10 +1449,10 @@
         if (card) card.classList.add("is-flipped"); // animate the flip first,
         return setTimeout(() => { if (state.step === "waiting") render(); }, 800); // then show the next button
       }
-      case "fill-sample": state.applicant = { ...SAMPLE_APPLICANT }; return render();
-      case "li-import": return importFromLinkedIn();
+      case "fill-sample": state.applicant = cleanApplicant({ ...sampleFor(me()), linkedinUrl: state.applicant.linkedinUrl }); return render();
+      case "li-sample": return useSampleLinkedIn();
       case "li-dismiss": state.linkedin.imported = false; return render();
-      case "sample-photo": state.photoError = ""; return updateApplicant({ photo: SAMPLE_APPLICANT.photo });
+      case "sample-photo": state.photoError = ""; return updateApplicant({ photo: sampleFor(me()).photo });
       case "chip": {
         const g = chipGroups()[el.dataset.key], v = el.dataset.value;
         if (g.selected.includes(v)) g.set(g.selected.filter((s) => s !== v));
@@ -1385,23 +1494,28 @@
     if (t.dataset.field) return updateApplicant({ [t.dataset.field]: t.value });
     if (t.id === "brief-note") { state.brief.note = t.value; return; }
     if (t.dataset.acc) { state.account[t.dataset.acc] = t.value; state.account.errors = {}; return render(); }
-    if (t.id === "li-url") { state.linkedin.url = t.value; return; }
+    if (t.id === "li-url") { state.linkedin.url = t.value; if (state.linkedin.errorField === "url") { state.linkedin.error = ""; state.linkedin.errorField = ""; render(); } return; }
     if (t.dataset.chipInput) { state.chipDrafts[t.dataset.chipInput] = t.value; return render(); }
     if (t.id === "episode-scrubber") return seek(Number(t.value));
   });
   root.addEventListener("change", (e) => {
     const t = e.target;
     if (t.id === "step-select") {
-      if (t.value === "account") { state.account = { signedIn: false, username: "", password: "", confirm: "", show: false, errors: {} }; return render(true); }
-      if (!state.account.signedIn) state.account.signedIn = true; // prototype: jumping ahead from the dropdown skips the account page
+      if (t.value === "account") return signOut();
+      if (!state.account.signedIn) { // prototype: jumping ahead from the dropdown skips sign-in, as Jordan (the demo applicant)
+        state.account = { ...blankAccount(), signedIn: true, username: DEMO_LOGIN.username };
+        ACC.signIn(DEMO_LOGIN.username);
+        loadProgress();
+      }
       return goTo(t.value);
     }
     if (t.name === "optout-reason") { state.optOutReason = t.value; return; }
     if (t.id === "f-photo" && t.files && t.files[0]) return readPhoto(t.files[0], (url) => updateApplicant({ photo: url }));
+    if (t.id === "li-pdf" && t.files && t.files[0]) { const f = t.files[0]; t.value = ""; return importLinkedInPdf(f); }
   });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && state.modal && state.linkedin.status !== "loading") { state.modal = null; render(); }
-    if (e.key === "Enter" && e.target.id === "li-url") { e.preventDefault(); importFromLinkedIn(); }
+    if (e.key === "Enter" && e.target.id === "li-url") { e.preventDefault(); const f = document.querySelector('label[for="li-pdf"]'); if (f) f.focus(); }
   });
   root.addEventListener("keydown", (e) => {
     const t = e.target;
@@ -1429,12 +1543,15 @@
   // otherwise pick up where you left off.
   try {
     const params = new URLSearchParams(location.search);
+    // Whoever is signed in on this browser (shared with the homepage)
+    const signedIn = ACC.session();
+    if (signedIn) { state.account = { ...blankAccount(), signedIn: true, username: signedIn.username }; loadProgress(); }
     if (params.get("restart") === "1") {
-      clearProgress();
+      // "Back to the first match" on the homepage: replay the invitation, keeping the tester signed in and their card
+      if (signedIn) { clearProgress(); freshJourney(true); }
       params.delete("restart");
       history.replaceState(null, "", location.pathname + (params.toString() ? "?" + params : "") + location.hash);
-    } else {
-      loadProgress();
+    } else if (!signedIn) {
       if (takeHandoff()) { /* arrived signed in from the hiring manager prototype's sign-in page */ }
     }
   } catch (e) { /* bad URL or storage unavailable: start fresh */ }

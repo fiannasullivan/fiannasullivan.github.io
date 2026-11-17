@@ -160,3 +160,7 @@
 .k-fit-label { margin-top: 0.25rem; font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--muted-foreground); }
 .k-fit-pill { flex-shrink: 0; border-radius: 9999px; background: var(--accent); color: var(--accent-foreground); padding: 0.15rem 0.6rem; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
 @media (max-width: 560px) { .k-fit-pill { display: none; } }
+
+/* Sign out (header) */
+.k-signout { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: var(--muted-foreground); text-decoration: underline dotted; text-underline-offset: 4px; }
+.k-signout:hover { color: var(--foreground); }
